@@ -1,0 +1,54 @@
+# vi: ft=dockerfile
+{{ edit_comment_elasticsearch }}
+
+FROM docker.elastic.co/elasticsearch/elasticsearch:{{ es_real_version }}
+
+###
+### Upgrade (install ps)
+###
+{% if (es_build_settings[es_version]['should_fix_repo']) %}
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-* && \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=https://mirror.rackspace.com\/centos-vault|g' /etc/yum.repos.d/CentOS-Linux-*
+
+{% endif %}
+RUN yum -y install zip && \
+    zip -q -d /usr/share/elasticsearch/lib/log4j-core-*.jar org/apache/logging/log4j/core/lookup/JndiLookup.class && \
+    yum remove -y zip && \
+    yum -y clean all && \
+    rm -rf /var/cache
+
+###
+### Configure
+###
+RUN echo "xpack.security.enabled: false" >> /usr/share/elasticsearch/config/elasticsearch.yml
+{% if (es_build_settings[es_version]['single_node']) %}
+
+RUN echo "discovery.type: single-node" >> /usr/share/elasticsearch/config/elasticsearch.yml
+{% endif %}
+
+###
+### Install required plugins for Elasticsearch
+###
+RUN bin/elasticsearch-plugin install -b analysis-icu && \
+    bin/elasticsearch-plugin install -b analysis-phonetic
+
+###
+### Copy files
+###
+COPY ./data/docker-healthcheck.sh /docker-healthcheck.sh
+COPY ./data/docker-entrypoint.sh /docker-entrypoint.sh
+
+###
+### Healthcheck
+###
+HEALTHCHECK --retries=3 CMD ["bash", "/docker-healthcheck.sh"]
+
+###
+### Ports
+###
+EXPOSE 9200 9300
+
+###
+### Entrypoint
+###
+ENTRYPOINT ["/docker-entrypoint.sh"]

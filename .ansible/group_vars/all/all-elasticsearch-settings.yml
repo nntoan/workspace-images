@@ -1,0 +1,34 @@
+---
+###################################################################################################
+# ElasticSearch settings
+###################################################################################################
+
+# -------------------------------------------------------------------------------------------------
+# Global
+# -------------------------------------------------------------------------------------------------
+es_build_settings:
+  6.5:
+    should_fix_repo: False
+    single_node: True
+  6.8:
+    should_fix_repo: False
+    single_node: True
+  7.5:
+    should_fix_repo: False
+    single_node: True
+  7.6:
+    should_fix_repo: False
+    single_node: True
+  7.7:
+    should_fix_repo: False
+    single_node: True
+  7.9:
+    should_fix_repo: False
+    single_node: True
+  7.10:
+    should_fix_repo: True
+    single_node: True
+  7.11:
+    should_fix_repo: True
+    single_node: True
+

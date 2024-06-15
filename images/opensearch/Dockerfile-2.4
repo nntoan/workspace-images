@@ -1,0 +1,42 @@
+# vi: ft=dockerfile
+# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/opensearch/Dockerfile.j2 instead.
+
+FROM opensearchproject/opensearch:2.4.0
+
+###
+### Upgrade (install ps)
+###
+USER root
+RUN yum -y install zip && \
+    zip -q -d /usr/share/opensearch/lib/log4j-core-*.jar org/apache/logging/log4j/core/lookup/JndiLookup.class && \
+    yum remove -y zip && \
+    yum -y clean all && \
+    rm -rf /var/cache
+USER opensearch
+
+###
+### Install required plugins for Elasticsearch
+###
+RUN bin/opensearch-plugin install -b analysis-icu && \
+    bin/opensearch-plugin install -b analysis-phonetic
+
+###
+### Copy files
+###
+COPY ./data/docker-healthcheck.sh /docker-healthcheck.sh
+COPY ./data/docker-entrypoint.sh /docker-entrypoint.sh
+
+###
+### Healthcheck
+###
+HEALTHCHECK --retries=3 CMD ["bash", "/docker-healthcheck.sh"]
+
+###
+### Ports
+###
+EXPOSE 9200 9300
+
+###
+### Entrypoint
+###
+ENTRYPOINT ["/docker-entrypoint.sh"]

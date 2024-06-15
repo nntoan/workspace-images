@@ -1,0 +1,148 @@
+---
+###################################################################################################
+# Ansible specific definitions
+###################################################################################################
+
+edit_comment_php_cli: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/php/cli/Dockerfile.j2 instead."
+edit_comment_php_fpm: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/php/fpm/Dockerfile.j2 instead."
+edit_comment_elasticsearch: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/elasticsearch/Dockerfile.j2 instead."
+edit_comment_opensearch: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/opensearch/Dockerfile.j2 instead."
+edit_comment_varnish: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/nginx/Dockerfile.j2 instead."
+edit_comment_nginx: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/varnish/Dockerfile.j2 instead."
+
+
+# ------------------------------------------------------------------------------------------------------
+# Adds version checks to Dockerfile
+# ------------------------------------------------------------------------------------------------------
+debug: True
+
+# Also implement checks in builder images (slow, but fails faster)
+build_fail_fast: False
+
+
+# ------------------------------------------------------------------------------------------------------
+# Available PHP versions (see inventory)
+# ------------------------------------------------------------------------------------------------------
+php_all_versions:
+  - 7.2
+  - 7.3
+  - 7.4
+  - 8.0
+  - 8.1
+  - 8.2
+  - 8.3
+
+
+# ------------------------------------------------------------------------------------------------------
+# Available Elasticsearch versions (see inventory)
+# ------------------------------------------------------------------------------------------------------
+es_all_versions:
+  - 6.5
+  - 6.8
+  - 7.5
+  - 7.6
+  - 7.7
+  - 7.9
+  - 7.10
+  - 7.11
+
+
+# ------------------------------------------------------------------------------------------------------
+# Available OpenSearch versions (see inventory)
+# ------------------------------------------------------------------------------------------------------
+os_all_versions:
+  - 1.1
+  - 1.2
+  - 1.3
+  - 2.3
+  - 2.4
+  - 2.5
+  - 2.12
+
+
+# ------------------------------------------------------------------------------------------------------
+# Available Nginx versions (see inventory)
+# ------------------------------------------------------------------------------------------------------
+nginx_all_versions:
+  - 1.24
+
+
+# ------------------------------------------------------------------------------------------------------
+# Available Varnish versions (see inventory)
+# ------------------------------------------------------------------------------------------------------
+varnish_all_versions:
+  - 4.0
+  - 6.0
+  - 6.2
+  - 6.5
+  - 6.6
+  - 7.0
+  - 7.1
+  - 7.1.1
+
+# ------------------------------------------------------------------------------------------------------
+# Docker file paths for each version for php-cli, php-fpm, opensearch, elasticsearch, varnish and nginx
+# ------------------------------------------------------------------------------------------------------
+template_dockerfiles_php:
+  - src: DOCKERFILES/php/cli/Dockerfile.j2
+    dst: "../images/php/{{ php_version }}-cli/Dockerfile"
+    key: php
+    alt: php
+  - src: DOCKERFILES/php/fpm/Dockerfile.j2
+    dst: "../images/php/{{ php_version }}-fpm/Dockerfile"
+    key: php
+    alt: php
+
+template_dockerfiles_elasticsearch:
+  - src: DOCKERFILES/elasticsearch/Dockerfile.j2
+    dst: "../images/elasticsearch/Dockerfile-{{ '%s' % es_version }}"
+    key: elasticsearch
+    alt: elasticsearch
+
+template_dockerfiles_opensearch:
+  - src: DOCKERFILES/opensearch/Dockerfile.j2
+    dst: "../images/opensearch/Dockerfile-{{ os_version }}"
+    key: opensearch
+    alt: opensearch
+
+template_dockerfiles_nginx:
+  - src: DOCKERFILES/nginx/Dockerfile.j2
+    dst: "../images/nginx/{{ nginx_version }}/Dockerfile"
+    key: nginx
+    alt: nginx
+
+template_dockerfiles_varnish:
+  - src: DOCKERFILES/varnish/Dockerfile.j2
+    dst: "../images/varnish/{{ varnish_version }}/Dockerfile"
+    key: varnish
+    alt: varnish
+
+
+# ------------------------------------------------------------------------------------------------------
+# Assign php.ini & php-fpm.conf to PHP versions
+# ------------------------------------------------------------------------------------------------------
+template_configurations:
+
+#  # php.ini
+#  - src: CONFIGURATIONS/php.ini.j2
+#    dst: "../Dockerfiles/base/data/php-ini.d/php-{{ php_version }}.ini"
+#    cfg: "{{ php_settings_ini }}"
+#    key: base
+#    alt: base
+#  - src: CONFIGURATIONS/php.ini.j2
+#    dst: "../Dockerfiles/slim/data/php-ini.d/php-{{ php_version }}.ini"
+#    cfg: "{{ php_settings_ini }}"
+#    key: slim
+#    alt: base  # Alternative key to use when definition is not set in 'slim'
+#
+#  # php-fpm.conf
+#  - src: CONFIGURATIONS/php-fpm.conf.j2
+#    dst: "../Dockerfiles/base/data/php-fpm.conf/php-fpm-{{ php_version }}.conf"
+#    cfg: "{{ php_settings_fpm }}"
+#    key: base
+#    alt: base
+#  - src: CONFIGURATIONS/php-fpm.conf.j2
+#    dst: "../Dockerfiles/slim/data/php-fpm.conf/php-fpm-{{ php_version }}.conf"
+#    cfg: "{{ php_settings_fpm }}"
+#    key: slim
+#    alt: base  # Alternative key to use when definition is not set in 'slim'

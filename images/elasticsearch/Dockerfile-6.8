@@ -1,0 +1,47 @@
+# vi: ft=dockerfile
+# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/elasticsearch/Dockerfile.j2 instead.
+
+FROM docker.elastic.co/elasticsearch/elasticsearch:6.8.15
+
+###
+### Upgrade (install ps)
+###
+RUN yum -y install zip && \
+    zip -q -d /usr/share/elasticsearch/lib/log4j-core-*.jar org/apache/logging/log4j/core/lookup/JndiLookup.class && \
+    yum remove -y zip && \
+    yum -y clean all && \
+    rm -rf /var/cache
+
+###
+### Configure
+###
+RUN echo "xpack.security.enabled: false" >> /usr/share/elasticsearch/config/elasticsearch.yml
+
+RUN echo "discovery.type: single-node" >> /usr/share/elasticsearch/config/elasticsearch.yml
+
+###
+### Install required plugins for Elasticsearch
+###
+RUN bin/elasticsearch-plugin install -b analysis-icu && \
+    bin/elasticsearch-plugin install -b analysis-phonetic
+
+###
+### Copy files
+###
+COPY ./data/docker-healthcheck.sh /docker-healthcheck.sh
+COPY ./data/docker-entrypoint.sh /docker-entrypoint.sh
+
+###
+### Healthcheck
+###
+HEALTHCHECK --retries=3 CMD ["bash", "/docker-healthcheck.sh"]
+
+###
+### Ports
+###
+EXPOSE 9200 9300
+
+###
+### Entrypoint
+###
+ENTRYPOINT ["/docker-entrypoint.sh"]

@@ -1,0 +1,220 @@
+---
+###################################################################################################
+# Docker: php-fpm (docker stage: help)
+###################################################################################################
+
+#
+# This file holds definition for all nntoan/docker-php:x.y-fpm images
+#
+
+
+###
+### Define operating system versions
+###
+os_release:
+  # Bookworm (Ubuntu: jammy, kinetic, lunar, mantic)
+  all:
+    debian: bookworm
+    ubuntu: jammy
+  8.3:
+    debian: bookworm
+    ubuntu: jammy
+  8.2:
+    debian: bookworm
+    ubuntu: jammy
+  8.1:
+    debian: bookworm
+    ubuntu: jammy
+  # Bullseye (Ubuntu: focal, groovy, hirsute, impish)
+  8.0:
+    debian: bullseye
+    ubuntu: focal
+  7.4:
+    debian: bullseye
+    ubuntu: focal
+  7.3:
+    debian: bullseye
+    ubuntu: focal
+  # Buster (Ubuntu: bionic, cosmic, disco, eoan)
+  7.2:
+    debian: buster
+    ubuntu: bionic
+  7.1:
+    debian: buster
+    ubuntu: bionic
+  # Strech (Ubuntu: xenial, yakkety, zesty, artful)
+  7.0:
+    debian: stretch
+    ubuntu: xenial
+  5.6:
+    debian: stretch
+    ubuntu: xenial
+  # Jessie (Ubuntu: trusty, utopic, vivid, wily)
+  5.5:
+    debian: jessie
+    ubuntu: trusty
+  5.4:
+    debian: jessie
+    ubuntu: trusty
+  5.3:
+    debian: jessie
+    ubuntu: trusty
+  5.2:
+    debian: jessie
+    ubuntu: trusty
+
+
+# -------------------------------------------------------------------------------------------------
+# Apt repositories to enable (in defined order)
+# -------------------------------------------------------------------------------------------------
+base_apt_repositories_enabled:
+  - backports
+  - blackfire
+  # - mongo  # Note: This is done separately in tools (to check ARCH as well)
+  # - pgsql  # Note: This is done separately in tools (to check ARCH as well)
+
+
+# -------------------------------------------------------------------------------------------------
+# Software to install (in defined order)
+# -------------------------------------------------------------------------------------------------
+base_software_enabled:
+  - dig     # required by Devilbox Intranet
+  - netcat  # required by Devilbox Intranet
+  - ping    # required by Devilbox Intranet
+  - sudo    # required by /etc/sudoers.d/devilbox config file
+  - blackfire
+  - msmtp
+  - mhsendmail
+
+
+# -------------------------------------------------------------------------------------------------
+# Apt repository definition
+# -------------------------------------------------------------------------------------------------
+
+# all: is generic version of defines
+# 7.2: is specific version of defines
+# disabled: [optional] Array of PHP versions for which to disable this module
+#
+# all, 7.2, 7.1, 7.0, 5.6:
+#   deb:       Deb line to add to sources list
+#   key:       [optional] Key id to add for repository
+#   pre:       [optional] Run custom command to add gpg key for repository
+#
+base_apt_repositories_available:
+
+  ###
+  ### Blackfire
+  ###
+  blackfire:
+    all:
+      type: repo
+      deb: deb http://packages.blackfire.io/debian any main
+      pre: curl -sS -L --fail "https://packages.blackfire.io/gpg.key" | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1 apt-key add -
+
+
+
+# -------------------------------------------------------------------------------------------------
+# Essential Software definition
+# -------------------------------------------------------------------------------------------------
+
+# all: is generic version of defines
+# 7.2: is specific version of defines
+# disabled: [optional] Array of PHP versions for which to disable this module
+# check:    [optional] Include a check command to test if it was installed successfully
+#
+# all, 7.2, 7.1, 7.0, 5.6, 5.5, 5.4:
+#   pre:       [optional] Run command before 'command:' statement
+#   command:   Command to execute
+#   post:      [optional] Run command after 'command:' statement
+#
+base_software_available:
+
+  ###
+  ### dig
+  ###
+  dig:
+    check: dig -v 2>&1 | grep -E '[0-9]\.[0-9]'
+    all:
+      type: apt
+      package: dnsutils
+
+  ###
+  ### netcat
+  ###
+  netcat:
+    check: nc -h 2>&1 | grep netcat
+    all:
+      type: apt
+      package: netcat-openbsd
+
+  ###
+  ### ping
+  ###
+  ping:
+    check: ping -V | grep ^ping
+    all:
+      type: apt
+      package: iputils-ping
+
+  ###
+  ### sudo
+  ###
+  sudo:
+    check: sudo --version | grep -E 'version [0-9]+\.[0-9]+'
+    all:
+      type: apt
+      package: sudo
+
+  ###
+  ### Blackfire
+  ###
+  blackfire:
+    check: |
+      blackfire version \
+      && blackfire-php -v \
+    all:
+      type: custom
+      pre: |
+        apt-get update \
+      command: |
+        apt-get install -y --no-install-recommends --no-install-suggests \
+          blackfire-php \
+      post: rm -rf /var/lib/apt/lists/*
+
+  ###
+  ### msmtp
+  ###
+  msmtp:
+    check: msmtp --version 2>&1 | grep -E 'version [0-9]+\.[0-9]+'
+    all:
+      type: custom
+      pre: |
+        apt-get update \
+      command: |
+        DEB_HOST_ARCH="$( dpkg-architecture --query DEB_HOST_ARCH )" \
+        && if [ "${DEB_HOST_ARCH}" = "amd64" ] || [ "${DEB_HOST_ARCH}" = "arm64" ]; then \
+          apt-get install -y --no-install-recommends --no-install-suggests \
+          msmtp; \
+        else \
+          printf '%s\n%s\n%s\n' '#!/bin/sh' 'echo "Not available for this platform."' 'exit 1' > /usr/local/bin/msmtp \
+          && chmod +x /usr/local/bin/msmtp; \
+        fi \
+      post: rm -rf /var/lib/apt/lists/*
+
+  ###
+  ### mhsendmail
+  ###
+  mhsendmail:
+    check: mhsendmail -h 2>&1 | grep 'Usage'
+    all:
+      type: custom
+      command: |
+        DEB_HOST_ARCH="$( dpkg-architecture --query DEB_HOST_ARCH )" \
+        && if [ "${DEB_HOST_ARCH}" = "amd64" ] || [ "${DEB_HOST_ARCH}" = "arm64" ]; then \
+          MHSENDMAIL_URL="https://github.com/devilbox/mhsendmail/releases/download/v0.3.0/mhsendmail_linux_${DEB_HOST_ARCH}" \
+          && curl -sS -L --fail "${MHSENDMAIL_URL}" > /usr/local/bin/mhsendmail \
+          && chmod +x /usr/local/bin/mhsendmail; \
+        else \
+          printf '%s\n%s\n%s\n' '#!/bin/sh' 'echo "Not available for this platform."' 'exit 1' > /usr/local/bin/mhsendmail \
+          && chmod +x /usr/local/bin/mhsendmail; \
+        fi \

@@ -1,0 +1,36 @@
+---
+
+#- hosts: php
+#  gather_facts: False
+#  roles:
+#    - php
+#  tags:
+#    - php
+
+- hosts: elasticsearch
+  gather_facts: False
+  roles:
+    - elasticsearch
+  tags:
+    - elasticsearch
+
+- hosts: opensearch
+  gather_facts: False
+  roles:
+    - opensearch
+  tags:
+    - opensearch
+
+#- hosts: nginx
+#  gather_facts: False
+#  roles:
+#    - nginx
+#  tags:
+#    - nginx
+#
+#- hosts: varnish
+#  gather_facts: False
+#  roles:
+#    - varnish
+#  tags:
+#    - varnish
