@@ -38,24 +38,32 @@ ENV MAGENTO_RUN_MODE production
 ENV SENDMAIL_PATH /dev/null
 ENV PHPRC ${MAGENTO_ROOT}/php.ini
 
-{% set env_php_extensions = " " -%}
-{% for ext_php_version in php_extensions %}
-{%- if php_version = ext_php_version -%}
-    {{- env_php_extensions.join(php_extensions[php_version]) -}}
-{%- endif %}
-{%- endfor %}
-{%- if run_deps -%}
+{% set env_php_extensions = "" -%}
+{{- env_php_extensions = " ".join(php_extensions[php_version]) -}}
+{%- if env_php_extensions -%}
 ENV PHP_EXTENSIONS {{ env_php_extensions }}
 {%- endif %}
 # Configure Node.js version
 RUN curl -sL https://deb.nodesource.com/setup_lts.x | bash
 
+{% set packages = [] -%}
+{%- for ext in help_software_enabled -%}
+    {%- for dep in fn.get_run_dep(php_version, ext, help_software_available) | from_json -%}
+        {%- if dep -%}
+            {{- packages.append(dep) -}}
+        {%- endif -%}
+    {%- endfor -%}
+{%- endfor -%}
+{%- if packages -%}
 # Install dependencies
 RUN apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
-  {%packages%} \
+  {% for package in packages | unique | sort %}
+    {{ package }} \
+  {% endfor %}
   && rm -rf /var/lib/apt/lists/*
+{%- endif %}
 
 # Install Python packages
 {%python_packages%}
