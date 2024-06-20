@@ -1,5 +1,6 @@
 # vi: ft=dockerfile
 {{ edit_comment_php_cli }}
+{% import './jinja2/macros-work.j2' as fn %}
 
 FROM golang:1.15 AS builder
 
@@ -37,8 +38,15 @@ ENV MAGENTO_RUN_MODE production
 ENV SENDMAIL_PATH /dev/null
 ENV PHPRC ${MAGENTO_ROOT}/php.ini
 
+{% set env_php_extensions = " " -%}
+{% for ext_php_version in php_extensions %}
+{%- if php_version = ext_php_version -%}
+    {{- env_php_extensions.join(php_extensions[php_version]) -}}
+{%- endif %}
+{%- endfor %}
+{%- if run_deps -%}
 ENV PHP_EXTENSIONS {{ env_php_extensions }}
-
+{%- endif %}
 # Configure Node.js version
 RUN curl -sL https://deb.nodesource.com/setup_lts.x | bash
 

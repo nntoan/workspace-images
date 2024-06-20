@@ -1,5 +1,6 @@
 # vi: ft=dockerfile
 {{ edit_comment_php_fpm }}
+{% import './jinja2/macros-work.j2' as fn %}
 
 FROM golang:1.15 AS builder
 

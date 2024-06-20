@@ -7,7 +7,7 @@
     force: True
     mode:  0644
   with_items:
-    - "{{ template_dockerfiles }}"
+    - "{{ template_dockerfiles_php }}"
 
 - name: generate php configuration files
   ansible.builtin.template:
@@ -16,4 +16,4 @@
     force: True
     mode:  0644
   with_items:
-    - "{{ template_configurations }}"
+    - "{{ template_configurations_php }}"

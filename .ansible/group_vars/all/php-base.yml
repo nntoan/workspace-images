@@ -1,0 +1,158 @@
+---
+###################################################################################################
+# Docker: php-base (docker stage: help)
+###################################################################################################
+
+#
+# This file holds definition for all nntoan/docker-php:x.y-z images
+#
+
+# The following specifies the order in which modules are being built.
+php_extensions:
+  7.2:
+    - bcmath
+    - bz2
+    - calendar
+    - exif
+    - gd
+    - gettext
+    - intl
+    - mysqli
+    - opcache
+    - pdo_mysql
+    - redis
+    - soap
+    - sockets
+    - sodium
+    - sysvmsg
+    - sysvsem
+    - sysvshm
+    - xsl
+    - zip
+    - pcntl
+  7.3:
+    - bcmath
+    - bz2
+    - calendar
+    - exif
+    - gd
+    - gettext
+    - intl
+    - mysqli
+    - opcache
+    - pdo_mysql
+    - redis
+    - soap
+    - sockets
+    - sodium
+    - sysvmsg
+    - sysvsem
+    - sysvshm
+    - xsl
+    - zip
+    - pcntl
+  7.4:
+    - bcmath
+    - bz2
+    - calendar
+    - exif
+    - gd
+    - gettext
+    - intl
+    - mysqli
+    - opcache
+    - pdo_mysql
+    - redis
+    - soap
+    - sockets
+    - sodium
+    - sysvmsg
+    - sysvsem
+    - sysvshm
+    - xsl
+    - zip
+    - pcntl
+  8.0:
+    - bcmath
+    - bz2
+    - calendar
+    - exif
+    - gd
+    - gettext
+    - intl
+    - mysqli
+    - opcache
+    - pdo_mysql
+    - redis
+    - soap
+    - sockets
+    - sodium
+    - sysvmsg
+    - sysvsem
+    - sysvshm
+    - xsl
+    - zip
+    - pcntl
+  8.1:
+    - bcmath
+    - bz2
+    - calendar
+    - exif
+    - gd
+    - gettext
+    - intl
+    - mysqli
+    - opcache
+    - pdo_mysql
+    - redis
+    - soap
+    - sockets
+    - sodium
+    - sysvmsg
+    - sysvsem
+    - sysvshm
+    - xsl
+    - zip
+    - pcntl
+  8.2:
+    - bcmath
+    - bz2
+    - calendar
+    - exif
+    - gd
+    - gettext
+    - intl
+    - mysqli
+    - opcache
+    - pdo_mysql
+    - redis
+    - soap
+    - sockets
+    - sodium
+    - sysvmsg
+    - sysvsem
+    - sysvshm
+    - xsl
+    - zip
+    - pcntl
+  8.3:
+    - bcmath
+    - bz2
+    - calendar
+    - exif
+    - gd
+    - gettext
+    - intl
+    - mysqli
+    - opcache
+    - pdo_mysql
+    - redis
+    - soap
+    - sockets
+    - sodium
+    - sysvmsg
+    - sysvsem
+    - sysvshm
+    - xsl
+    - zip
+    - pcntl

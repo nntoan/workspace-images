@@ -190,6 +190,7 @@ extensions_available:
         && tar zxpf /tmp/blackfire-probe.tar.gz -C /tmp/blackfire \
         && mv /tmp/blackfire/blackfire-*.so $(php -r "echo ini_get('extension_dir');")/blackfire.so \
         && rm -rf /tmp/blackfire /tmp/blackfire-probe.tar.gz \
+
   bz2:
     disabled: []
     all:

@@ -85,17 +85,17 @@ varnish_all_versions:
 # ------------------------------------------------------------------------------------------------------
 template_dockerfiles_php:
   - src: DOCKERFILES/php/cli/Dockerfile.j2
-    dst: "../images/php/{{ php_version }}-cli/Dockerfile"
+    dst: "../images/php/cli/Dockerfile-{{ php_version }}"
     key: php
     alt: php
   - src: DOCKERFILES/php/fpm/Dockerfile.j2
-    dst: "../images/php/{{ php_version }}-fpm/Dockerfile"
+    dst: "../images/php/fpm/Dockerfile-{{ php_version }}"
     key: php
     alt: php
 
 template_dockerfiles_elasticsearch:
   - src: DOCKERFILES/elasticsearch/Dockerfile.j2
-    dst: "../images/elasticsearch/Dockerfile-{{ '%s' % es_version }}"
+    dst: "../images/elasticsearch/Dockerfile-{{ '%g' % es_version }}"
     key: elasticsearch
     alt: elasticsearch
 
@@ -107,13 +107,13 @@ template_dockerfiles_opensearch:
 
 template_dockerfiles_nginx:
   - src: DOCKERFILES/nginx/Dockerfile.j2
-    dst: "../images/nginx/{{ nginx_version }}/Dockerfile"
+    dst: "../images/nginx/Dockerfile-{{ nginx_version }}"
     key: nginx
     alt: nginx
 
 template_dockerfiles_varnish:
   - src: DOCKERFILES/varnish/Dockerfile.j2
-    dst: "../images/varnish/{{ varnish_version }}/Dockerfile"
+    dst: "../images/varnish/Dockerfile-{{ varnish_version }}"
     key: varnish
     alt: varnish
 
