@@ -116,8 +116,8 @@ set_gid() {
 			run "chown -R :${groupname} ${homedir} 2>/dev/null || true" "${debug}"
 			run "chown -R :${groupname} /var/lib/php/session" "${debug}"
 			run "chown -R :${groupname} /var/lib/php/wsdlcache" "${debug}"
-			if [ -f "/var/spool/mail/devilbox" ]; then
-				run "chown -R :${groupname} /var/spool/mail/devilbox" "${debug}"
+			if [ -f "/var/spool/mail/workspace" ]; then
+				run "chown -R :${groupname} /var/spool/mail/workspace" "${debug}"
 			fi
 			if [ -d "/etc/supervisor/custom.d" ]; then
 				run "chown -R :${groupname} /etc/supervisor/custom.d" "${debug}"

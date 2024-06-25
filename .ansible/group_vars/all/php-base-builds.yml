@@ -230,7 +230,7 @@ extensions_available:
     disabled: []
     all:
       type: builtin
-      flags: --enable-opcache
+      configure: --enable-opcache
   pcntl:
     disabled: []
     all:

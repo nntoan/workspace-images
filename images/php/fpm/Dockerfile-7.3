@@ -1,0 +1,574 @@
+# vi: ft=dockerfile
+# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/php/fpm/Dockerfile.j2 instead.
+
+FROM golang:1.15 AS builder
+
+RUN if [ $(uname -m) = "x86_64" ]; then mailhog_arch="amd64"; else mailhog_arch="arm64"; fi \
+    && wget -O mhsendmail.tar.gz https://github.com/mailhog/mhsendmail/archive/refs/tags/v0.2.0.tar.gz \
+    && tar -xf mhsendmail.tar.gz \
+    && mkdir -p ./src/github.com/mailhog/ \
+    && mv ./mhsendmail-0.2.0 ./src/github.com/mailhog/mhsendmail \
+    && cd ./src/github.com/mailhog/mhsendmail/ \
+    && go get . \
+    && GOOS=linux GOARCH=${mailhog_arch} go build -o mhsendmail .
+
+FROM php:7.3-fpm
+
+###
+### Arguments
+###
+ARG DOCROOT=/app
+ARG MAGENTO_ROOT=/app
+
+###
+### Envs
+###
+ENV MY_USER="www" \
+    MY_GROUP="www" \
+    MY_UID="1000" \
+    MY_GID="1000" \
+    PHP_VERSION="7.3" \
+    PHP_MEMORY_LIMIT="2G" \
+    PHP_VALIDATE_TIMESTAMPS=1 \
+    DEBUG=false \
+    MAGENTO_RUN_MODE="production" \
+    SENDMAIL_PATH=/dev/null \
+    PHPRC="${DOCROOT}/APPNAME/php.ini"
+ENV PHP_EXTENSIONS bcmath bz2 calendar exif gd gettext intl mysqli mcrypt pcntl pdo_mysql soap sockets sysvmsg sysvsem sysvshm redis opcache xsl zip sodium
+
+###
+### User/Group
+###
+RUN set -eux \
+    && groupadd -g ${MY_GID} -r ${MY_GROUP} \
+    && useradd -g ${MY_GROUP} -u ${MY_UID} -d ${DOCROOT} -s /bin/bash ${MY_USER}
+
+
+###
+### Install
+###
+RUN set -eux \
+    && DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests \
+    apt-utils \
+    sendmail-bin \
+    sendmail \
+    sudo \
+    iproute2 \
+    git \
+    ca-certificates \
+    gnupg2 \
+    libbz2-dev \
+    libc-client-dev \
+    libfreetype6-dev \
+    libgeoip-dev \
+    libgmp-dev \
+    libgpgme11-dev \
+    libicu-dev \
+    libjpeg62-turbo-dev \
+    libkrb5-dev \
+    libldap2-dev \
+    libmagickcore-dev \
+    libmagickwand-dev \
+    libpng-dev \
+    libpspell-dev \
+    librecode-dev \
+    librecode0 \
+    libtidy-dev \
+    libxslt1-dev \
+    libyaml-dev \
+    libzip-dev \
+    lsb-release \
+    software-properties-common \
+    wget \
+    zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MailHog
+COPY --from=builder /go/src/github.com/mailhog/mhsendmail/mhsendmail /usr/local/bin/
+RUN sudo chmod +x /usr/local/bin/mhsendmail
+
+
+###
+### Install and enable PHP modules
+###
+# -------------------- Installing PHP Extension: bcmath --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) bcmath \
+	&& true
+
+
+# -------------------- Installing PHP Extension: blackfire --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Custom extension
+	&& ARCH="$(dpkg-architecture --query DEB_HOST_GNU_CPU)" \
+&& version=$(php -r "echo PHP_MAJOR_VERSION.PHP_MINOR_VERSION;") \
+&& curl -A "Docker" -o /tmp/blackfire-probe.tar.gz -D - -L -s https://blackfire.io/api/v1/releases/probe/php/linux/${ARCH}/$version \
+&& mkdir -p /tmp/blackfire \
+&& tar zxpf /tmp/blackfire-probe.tar.gz -C /tmp/blackfire \
+&& mv /tmp/blackfire/blackfire-*.so $(php -r "echo ini_get('extension_dir');")/blackfire.so \
+&& rm -rf /tmp/blackfire /tmp/blackfire-probe.tar.gz \
+ \
+	&& true
+
+
+# -------------------- Installing PHP Extension: bz2 --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) bz2 \
+	&& true
+
+
+# -------------------- Installing PHP Extension: calendar --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) calendar \
+	&& true
+
+
+# -------------------- Installing PHP Extension: exif --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) exif \
+	&& true
+
+
+# -------------------- Installing PHP Extension: gd --------------------
+RUN set -eux \
+	# Installation: Version specific
+	# Type:         Built-in extension
+	# Custom:       configure command
+	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
+	# Installation
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) gd \
+	&& true
+
+
+# -------------------- Installing PHP Extension: geoip --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install geoip \
+	&& true
+
+
+# -------------------- Installing PHP Extension: gettext --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) gettext \
+	&& true
+
+
+# -------------------- Installing PHP Extension: gmp --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) gmp \
+	&& true
+
+
+# -------------------- Installing PHP Extension: gnupg --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install gnupg \
+	&& true
+
+
+# -------------------- Installing PHP Extension: igbinary --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install igbinary \
+	&& true
+
+
+# -------------------- Installing PHP Extension: imagick --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install imagick \
+	&& true
+
+
+# -------------------- Installing PHP Extension: imap --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	# Custom:       configure command
+	&& docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) imap \
+	&& true
+
+
+# -------------------- Installing PHP Extension: intl --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) intl \
+	&& true
+
+
+# -------------------- Installing PHP Extension: ldap --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Custom extension
+	&& if [ $(uname -m) = "x86_64" ]; then ldap_arch="x86_64-linux-gnu"; else ldap_arch="aarch64-linux-gnu"; fi \
+&& docker-php-ext-configure ldap --with-libdir=lib/${ldap_arch} \
+ \
+	&& true
+
+
+# -------------------- Installing PHP Extension: mailparse --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install mailparse \
+	&& true
+
+
+# -------------------- Installing PHP Extension: msgpack --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install msgpack \
+	&& true
+
+
+# -------------------- Installing PHP Extension: mysqli --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) mysqli \
+	&& true
+
+
+# -------------------- Installing PHP Extension: oauth --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install oauth \
+	&& true
+
+
+# -------------------- Installing PHP Extension: opcache --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	# Custom:       configure command
+	&& docker-php-ext-configure opcache --enable-opcache \
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) opcache \
+	&& true
+
+
+# -------------------- Installing PHP Extension: pcntl --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) pcntl \
+	&& true
+
+
+# -------------------- Installing PHP Extension: pcov --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install pcov \
+	&& true
+
+
+# -------------------- Installing PHP Extension: pdo_mysql --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) pdo_mysql \
+	&& true
+
+
+# -------------------- Installing PHP Extension: propro --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install propro \
+	&& true
+
+
+# -------------------- Installing PHP Extension: pspell --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) pspell \
+	&& true
+
+
+# -------------------- Installing PHP Extension: raphf --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install raphf \
+	&& true
+
+
+# -------------------- Installing PHP Extension: recode --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) recode \
+	&& true
+
+
+# -------------------- Installing PHP Extension: redis --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install redis \
+	&& true
+
+
+# -------------------- Installing PHP Extension: shmop --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) shmop \
+	&& true
+
+
+# -------------------- Installing PHP Extension: soap --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) soap \
+	&& true
+
+
+# -------------------- Installing PHP Extension: sockets --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) sockets \
+	&& true
+
+
+# -------------------- Installing PHP Extension: zookeeper --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Custom extension
+	&& mkdir -p /tmp/zoo \
+&& cd /tmp/zoo \
+&& git clone https://github.com/php-zookeeper/php-zookeeper.git \
+&& curl -LO https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz \
+&& tar -xf zookeeper-3.4.14.tar.gz \
+&& cp zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/generated/zookeeper.jute.h zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/include \
+&& cd zookeeper-3.4.14/zookeeper-client/zookeeper-client-c \
+&& ./configure \
+&& sed -i 's/CFLAGS = -g -O2 -D_GNU_SOURCE/CFLAGS = -g -O2 -D_GNU_SOURCE -Wno-error=format-overflow -Wno-error=stringop-truncation/g' Makefile \
+&& make \
+&& make install \
+&& ldconfig \
+&& cd /tmp/zoo/php-zookeeper \
+&& phpize \
+&& ./configure --with-libzookeeper-dir=../zookeeper-3.4.14/zookeeper-client/zookeeper-client-c \
+&& make \
+&& make install \
+ \
+	&& true
+
+
+# -------------------- Installing PHP Extension: sodium --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Custom extension
+	&& rm -f /usr/local/etc/php/conf.d/*sodium.ini \
+&& rm -f /usr/local/lib/php/extensions/*/*sodium.so \
+&& apt-get remove libsodium* -y \
+&& mkdir -p /tmp/libsodium \
+&& curl -sL https://github.com/jedisct1/libsodium/archive/1.0.18-RELEASE.tar.gz | tar xzf - -C  /tmp/libsodium \
+&& cd /tmp/libsodium/libsodium-1.0.18-RELEASE/ \
+&& ./configure \
+&& make && make check \
+&& make install \
+&& cd / \
+&& rm -rf /tmp/libsodium \
+&& pecl install -o -f libsodium \
+ \
+	&& true
+
+
+# -------------------- Installing PHP Extension: sysvmsg --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) sysvmsg \
+	&& true
+
+
+# -------------------- Installing PHP Extension: sysvsem --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) sysvsem \
+	&& true
+
+
+# -------------------- Installing PHP Extension: sysvshm --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) sysvshm \
+	&& true
+
+
+# -------------------- Installing PHP Extension: tidy --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) tidy \
+	&& true
+
+
+# -------------------- Installing PHP Extension: xdebug --------------------
+RUN set -eux \
+	# Installation: Version specific
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install xdebug-3.1.2 \
+	&& true
+
+
+# -------------------- Installing PHP Extension: xmlrpc --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) xmlrpc \
+	&& true
+
+
+# -------------------- Installing PHP Extension: xsl --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) xsl \
+	&& true
+
+
+# -------------------- Installing PHP Extension: yaml --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install yaml \
+	&& true
+
+
+# -------------------- Installing PHP Extension: zip --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) zip \
+	&& true
+
+
+# -------------------- Installing PHP Extension: ioncube --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Custom extension
+	&& EXTENSION_DIR="$( php -i | grep ^extension_dir | awk -F '=>' '{print $2}' | xargs )" \
+&& if [ ! -d "${EXTENSION_DIR}" ]; then mkdir -p "${EXTENSION_DIR}"; fi \
+&& curl -sS --fail -k https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_$(dpkg-architecture --query DEB_HOST_GNU_CPU | sed 's/_/-/g').tar.gz -L -o ioncube.tar.gz \
+&& tar xvfz ioncube.tar.gz \
+&& cd ioncube \
+&& cp "ioncube_loader_lin_7.3.so" "${EXTENSION_DIR}/ioncube.so" \
+&& cd ../ \
+&& rm -rf ioncube \
+&& rm -rf ioncube.tar.gz \
+ \
+	&& true
+
+
+
+# Shrink everything down
+RUN set -eux \
+    && (find /usr/local/bin  -type f -print0 | xargs -n1 -0 -P$(getconf _NPROCESSORS_ONLN) strip --strip-all -p 2>/dev/null || true) \
+    && (find /usr/local/lib  -type f -print0 | xargs -n1 -0 -P$(getconf _NPROCESSORS_ONLN) strip --strip-all -p 2>/dev/null || true) \
+    && (find /usr/local/sbin -type f -print0 | xargs -n1 -0 -P$(getconf _NPROCESSORS_ONLN) strip --strip-all -p 2>/dev/null || true)
+
+
+###
+### Configure Bash (composer, node yarn)
+###
+RUN set -eux \
+    && { \
+        #echo 'PATH="${PATH}:/usr/local/bin:/usr/local/sbin"'; \
+        echo; \
+        echo "# [Devilbox] Ensure yarn, composer and node are in PATH"; \
+        echo 'PATH="${HOME}/.yarn/bin:${PATH}"'; \
+        echo 'PATH="${HOME}/.composer/vendor/bin:${PATH}"'; \
+        echo 'PATH="/opt/nvm/versions/node/$(node --version)/bin:${PATH}"'; \
+        echo "export PATH"; \
+        echo; \
+        echo "# [Devilbox] Ensure to load nvm"; \
+        echo 'export NVM_DIR="/opt/nvm"'; \
+        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm'; \
+        echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion'; \
+    } | tee -a /home/${MY_USER}/.bashrc /root/.bashrc \
+    && chown ${MY_USER}:${MY_GROUP} /home/${MY_USER}/.bashrc
+
+
+###
+### Copy artifacts from builder
+###
+COPY ./data/php-fpm.d/php-fpm-7.3.conf /usr/local/etc/php-fpm.conf
+COPY ./data/php-ini.d/php-fpm-7.3.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY ./data/php-ini.d/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
+COPY ./data/php-ini.d/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
+COPY ./data/php-ini.d/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini
+COPY ./data/php-ini.d/php-gnupg.ini /usr/local/etc/php/conf.d/zz-gnupg.ini
+COPY ./data/docker-entrypoint.sh /docker-entrypoint.sh
+
+
+###
+### Volumes
+###
+RUN set -eux \
+    mkdir -p ${DOCROOT}
+VOLUME ${DOCROOT}
+
+
+###
+### Permissions & miscellaneous
+###
+RUN set -eux \
+    chown -R www:www /usr/local /var/www /var/log /usr/local/etc/php/conf.d ${DOCROOT}
+RUN ["chmod", "+x", "/docker-entrypoint.sh"]
+
+
+###
+### Where to start inside the container
+###
+WORKDIR ${MAGENTO_ROOT}
+
+
+###
+### Entrypoint
+###
+CMD ["php-fpm", "-R"]
+ENTRYPOINT ["/docker-entrypoint.sh"]

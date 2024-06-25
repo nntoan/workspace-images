@@ -46,11 +46,11 @@ ARG COMPOSER_VERSION=2.2.23
 {% else %}
 ARG COMPOSER_VERSION=2.7.0
 {% endif %}
-ARG DOCROOT=/app \
-    MAGENTO_ROOT=/app \
-    COMPOSER_ALLOW_SUPERUSER=1 \
-    COMPOSER_HOME=/composer \
-    CRONTAB=""
+ARG DOCROOT=/app
+ARG MAGENTO_ROOT=/app
+ARG COMPOSER_ALLOW_SUPERUSER=1
+ARG COMPOSER_HOME=/composer
+ARG CRONTAB=""
 
 
 ###
@@ -61,16 +61,16 @@ ENV MY_USER="www" \
     MY_UID="1000" \
     MY_GID="1000" \
     PHP_VERSION="{{ php_version }}" \
-    COMPOSER_MEMORY_LIMIT -1 \
-    COMPOSER_ALLOW_SUPERUSER ${COMPOSER_ALLOW_SUPERUSER} \
-    COMPOSER_HOME ${COMPOSER_HOME} \
-    COMPOSER_CLEAR_CACHE false \
-    PHP_MEMORY_LIMIT -1 \
-    PHP_VALIDATE_TIMESTAMPS 1 \
-    DEBUG false \
-    MAGENTO_RUN_MODE production \
-    SENDMAIL_PATH /dev/null \
-    PHPRC ${DOCROOT}/APPNAME/php.ini
+    COMPOSER_MEMORY_LIMIT=-1 \
+    COMPOSER_ALLOW_SUPERUSER="${COMPOSER_ALLOW_SUPERUSER}" \
+    COMPOSER_HOME="${COMPOSER_HOME}" \
+    COMPOSER_CLEAR_CACHE=false \
+    PHP_MEMORY_LIMIT=-1 \
+    PHP_VALIDATE_TIMESTAMPS=1 \
+    DEBUG=false \
+    MAGENTO_RUN_MODE="production" \
+    SENDMAIL_PATH=/dev/null \
+    PHPRC="${DOCROOT}/APPNAME/php.ini"
 {% set env_php_extensions = " ".join(default_extensions) -%}
 {%- if env_php_extensions -%}
 ENV PHP_EXTENSIONS {{ env_php_extensions }}
@@ -520,15 +520,30 @@ RUN set -eux \
 ###
 ### Copy artifacts from builder
 ###
-COPY etc/php-cli.ini /usr/local/etc/php/conf.d/zz-magento.ini
-COPY etc/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
-COPY etc/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
-COPY etc/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini
-COPY etc/php-gnupg.ini /usr/local/etc/php/conf.d/gnupg.ini
-COPY bin/* /usr/local/bin/
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY ./data/php-ini.d/php-cli-{{ php_version }}.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY ./data/php-ini.d/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
+COPY ./data/php-ini.d/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
+COPY ./data/php-ini.d/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini
+COPY ./data/php-ini.d/php-gnupg.ini /usr/local/etc/php/conf.d/zz-gnupg.ini
+COPY ./data/bin/* /usr/local/bin/
+COPY ./data/docker-entrypoint.sh /docker-entrypoint.sh
 
 
+###
+### Volumes
+###
+RUN set -eux \
+    mkdir -p ${DOCROOT}
+VOLUME ${DOCROOT}
+
+
+###
+### Permissions & miscellaneous
+###
+RUN set -eux \
+    chown -R www:www /usr/local /var/www /var/log /usr/local/etc/php/conf.d /etc/cron.d ${DOCROOT} ${COMPOSER_HOME}
+RUN set -eux \
+    if [ ! -z "${CRONTAB}" ]; then echo "${CRONTAB}" > /etc/cron.d/magento && touch /var/log/cron.log ; fi
 RUN ["chmod", "+x", \
     "/docker-entrypoint.sh", \
     "/usr/local/bin/magento-installer", \
@@ -544,25 +559,10 @@ RUN ["chmod", "+x", \
 
 
 ###
-### Volumes
-###
-RUN set -eux \
-    mkdir -p ${DOCROOT}
-VOLUME ${DOCROOT}
-
-
-###
-### Permissions & miscellaneous
-###
-RUN set -eux \
-    chown -R www:www /usr/local /var/www /var/log /usr/local/etc/php/conf.d /etc/cron.d ${DOCROOT} ${MAGENTO_ROOT} ${COMPOSER_HOME}
-RUN set -eux \
-    if [ ! -z "${CRONTAB}" ]; then echo "${CRONTAB}" > /etc/cron.d/magento && touch /var/log/cron.log ; fi
-
-###
 ### Where to start inside the container
 ###
 WORKDIR ${DOCROOT}
+
 
 ###
 ### Entrypoint

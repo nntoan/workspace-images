@@ -265,7 +265,7 @@ gen-dockerfiles:
 			-e docker_user=$(ORG_USER) \
 			-e \"{build_fail_fast: $(FAIL_FAST)}\" \
 			--forks 50 \
-			--diff $(ARGS) -vvv
+			--diff $(ARGS)
 
 
 

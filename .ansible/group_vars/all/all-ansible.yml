@@ -95,7 +95,7 @@ template_dockerfiles_php:
 
 template_dockerfiles_elasticsearch:
   - src: DOCKERFILES/elasticsearch/Dockerfile.j2
-    dst: "../images/elasticsearch/Dockerfile-{{ '%g' % es_version }}"
+    dst: "../images/elasticsearch/Dockerfile-{%- if es_version in [7.10, 7.11] -%}{{ '%.2f' % es_version }}{%- else %}{{ '%g' % es_version }}{%- endif %}"
     key: elasticsearch
     alt: elasticsearch
 
@@ -121,28 +121,23 @@ template_dockerfiles_opensearch:
 # ------------------------------------------------------------------------------------------------------
 # Assign php.ini & php-fpm.conf to PHP versions
 # ------------------------------------------------------------------------------------------------------
-template_configurations:
+template_configurations_php:
 
-#  # php.ini
-#  - src: CONFIGURATIONS/php.ini.j2
-#    dst: "../images/php/cli/php-ini.d/php-{{ php_version }}.ini"
-#    cfg: "{{ php_settings_ini }}"
-#    key: base
-#    alt: base
-#  - src: CONFIGURATIONS/php.ini.j2
-#    dst: "../images/php/cli/data/php-ini.d/php-{{ php_version }}.ini"
-#    cfg: "{{ php_settings_ini }}"
-#    key: slim
-#    alt: base  # Alternative key to use when definition is not set in 'slim'
-#
-#  # php-fpm.conf
-#  - src: CONFIGURATIONS/php-fpm.conf.j2
-#    dst: "../images/php/fpm/php-fpm.conf/php-fpm-{{ php_version }}.conf"
-#    cfg: "{{ php_settings_fpm }}"
-#    key: base
-#    alt: base
-#  - src: CONFIGURATIONS/php-fpm.conf.j2
-#    dst: "../images/php/fpm/data/php-fpm.conf/php-fpm-{{ php_version }}.conf"
-#    cfg: "{{ php_settings_fpm }}"
-#    key: slim
-#    alt: base  # Alternative key to use when definition is not set in 'slim'
+  # php.ini
+  - src: CONFIGURATIONS/php.ini.j2
+    dst: "../images/php/cli/data/php-ini.d/php-cli-{{ php_version }}.ini"
+    cfg: "{{ php_settings_ini }}"
+    key: cli
+    alt: cli
+  - src: CONFIGURATIONS/php.ini.j2
+    dst: "../images/php/fpm/data/php-ini.d/php-fpm-{{ php_version }}.ini"
+    cfg: "{{ php_settings_ini }}"
+    key: fpm
+    alt: fpm  # Alternative key to use when definition is not set in 'fpm'
+
+  # php-fpm.conf
+  - src: CONFIGURATIONS/php-fpm.conf.j2
+    dst: "../images/php/fpm/data/php-fpm.d/php-fpm-{{ php_version }}.conf"
+    cfg: "{{ php_settings_fpm }}"
+    key: base
+    alt: base
