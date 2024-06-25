@@ -32,6 +32,7 @@ RUN openssl req -x509 -newkey rsa:2048 -sha256 -days 730 -nodes \
   -addext "subjectAltName=DNS:*.${TLD_SUFFIX},DNS:*.${TLD_SUFFIX}"
 
 VOLUME ${MAGENTO_ROOT}
+VOLUME ${CERTIFICATE_ROOT}
 
 COPY ../data/docker-entrypoint.sh /docker-entrypoint.sh
 RUN ["chmod", "+x", "/docker-entrypoint.sh"]

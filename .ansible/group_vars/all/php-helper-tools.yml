@@ -14,6 +14,7 @@
 composer_home: /composer
 nvm_home: /opt/nvm
 node_version: --lts
+appuser: www
 
 
 # -------------------------------------------------------------------------------------------------
@@ -22,7 +23,6 @@ node_version: --lts
 help_software_enabled:
   - composer
   - nvm
-  - pip
 
 
 ## -------------------------------------------------------------------------------------------------
@@ -102,9 +102,9 @@ help_software_available:
   ###
   nvm:
     check: |
-      su  -c '. {{ nvm_home }}/nvm.sh; nvm --version' devilbox | grep -E '^v?[0-9][.0-9]+' \
-      && su  -c '. {{ nvm_home }}/nvm.sh; node --version' devilbox | grep -E '^v?[0-9][.0-9]+' \
-      && su  -c '. {{ nvm_home }}/nvm.sh; yarn --version' devilbox | grep -E '^v?[0-9][.0-9]+' \
+      su  -c '. {{ nvm_home }}/nvm.sh; nvm --version' {{ appuser }} | grep -E '^v?[0-9][.0-9]+' \
+      && su  -c '. {{ nvm_home }}/nvm.sh; node --version' {{ appuser }} | grep -E '^v?[0-9][.0-9]+' \
+      && su  -c '. {{ nvm_home }}/nvm.sh; yarn --version' {{ appuser }} | grep -E '^v?[0-9][.0-9]+' \
     all:
       type: custom
       pre: |
@@ -121,62 +121,27 @@ help_software_available:
         && curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" \
           | NVM_DIR="{{ nvm_home }}" bash \
         \
-        && chown -R devilbox:devilbox "{{ nvm_home }}" \
+        && chown -R {{ appuser }}:{{ appuser }} "{{ nvm_home }}" \
       # Install latest and LTS version and yarn
       post: |
-        su  -c ". {{ nvm_home }}/nvm.sh; nvm install ${NODE_VERSION}" devilbox \
-        && su  -c ". {{ nvm_home }}/nvm.sh; nvm use ${NODE_VERSION}" devilbox \
-        && su  -c ". {{ nvm_home }}/nvm.sh; corepack enable" devilbox \
+        su  -c ". {{ nvm_home }}/nvm.sh; nvm install ${NODE_VERSION}" {{ appuser }} \
+        && su  -c ". {{ nvm_home }}/nvm.sh; nvm use ${NODE_VERSION}" {{ appuser }} \
+        && su  -c ". {{ nvm_home }}/nvm.sh; corepack enable" {{ appuser }} \
         \
-        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' devilbox)/bin/corepack" /usr/local/bin/ \
-        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' devilbox)/bin/node" /usr/local/bin/ \
-        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' devilbox)/bin/npm" /usr/local/bin/ \
-        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' devilbox)/bin/npx" /usr/local/bin/ \
-        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' devilbox)/bin/yarn" /usr/local/bin/ \
+        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' {{ appuser }})/bin/corepack" /usr/local/bin/ \
+        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' {{ appuser }})/bin/node" /usr/local/bin/ \
+        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' {{ appuser }})/bin/npm" /usr/local/bin/ \
+        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' {{ appuser }})/bin/npx" /usr/local/bin/ \
+        && ln -s "{{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' {{ appuser }})/bin/yarn" /usr/local/bin/ \
         \
         && chmod 0777 {{ nvm_home }} \
         && find {{ nvm_home }} -type f -print0 | xargs -n1 -0 chmod go+w \
         && find {{ nvm_home }} -type d -print0 | xargs -n1 -0 chmod 0777 \
         \
         && rm -rf {{ nvm_home }}/.cache \
-        && rm -rf {{ nvm_home }}/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' devilbox)/share \
-        && rm -rf {{ nvm_home }}/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' devilbox)/include \
+        && rm -rf {{ nvm_home }}/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' {{ appuser }})/share \
+        && rm -rf {{ nvm_home }}/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' {{ appuser }})/include \
     7.0:
       type: custom
       pre: |
         NODE_VERSION="17" \
-
-  ###
-  ### Python pip
-  ###
-  pip:
-    check: pip --version
-    all:
-      type: custom
-      pre: rm -rf /usr/lib/python3.*/EXTERNALLY-MANAGED
-      command: |
-        curl -sS -L --fail https://bootstrap.pypa.io/get-pip.py | python3 \
-      # Cleanup
-      post: |
-        /bin/ls -1 /usr/local/lib/ | grep ^python | while read -r version; do \
-          cd "/usr/local/lib/${version}/" \
-          && find . -name '*.pyc' -print0 | xargs -0 -n1 rm -rf \
-          && find . -name '*.exe' -print0 | xargs -0 -n1 rm -rf \
-          && find . -name '__pycache__' -print0 | xargs -0 -n1 rm -rf \
-          \
-          && if [ -d "dist-packages" ]; then \
-            cd "dist-packages" \
-            && pwd \
-            && if /bin/ls -1 | grep -v '^pip'; then \
-              /bin/ls -1 | grep -v '^pip' | xargs -n1 rm -rf; \
-            fi \
-          fi \
-        done \
-      run_dep: [python3-distutils]
-      build_dep: [libpython3-dev]
-    7.2:
-      type: custom
-      command: |
-        curl -sS -L --fail https://bootstrap.pypa.io/pip/2.7/get-pip.py | python \
-      run_dep: []
-      build_dep: [libpython-dev]

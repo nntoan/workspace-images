@@ -1,11 +1,11 @@
 ---
 
-#- hosts: php
-#  gather_facts: False
-#  roles:
-#    - php
-#  tags:
-#    - php
+- hosts: php
+  gather_facts: False
+  roles:
+    - php
+  tags:
+    - php
 
 - hosts: elasticsearch
   gather_facts: False

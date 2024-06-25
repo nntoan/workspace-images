@@ -1,0 +1,571 @@
+# vi: ft=dockerfile
+{{ edit_comment_php_cli }}
+{% import './jinja2/macros-work.j2' as fn %}
+
+FROM golang:1.15 AS builder
+
+RUN if [ $(uname -m) = "x86_64" ]; then mailhog_arch="amd64"; else mailhog_arch="arm64"; fi \
+    && wget -O mhsendmail.tar.gz https://github.com/mailhog/mhsendmail/archive/refs/tags/v0.2.0.tar.gz \
+    && tar -xf mhsendmail.tar.gz \
+    && mkdir -p ./src/github.com/mailhog/ \
+    && mv ./mhsendmail-0.2.0 ./src/github.com/mailhog/mhsendmail \
+    && cd ./src/github.com/mailhog/mhsendmail/ \
+    && go get . \
+    && GOOS=linux GOARCH=${mailhog_arch} go build -o mhsendmail .
+
+
+FROM php:{{ php_real_version }}-cli
+MAINTAINER "Toan Nguyen" <hello@nntoan.com>
+
+###
+### Labels
+###
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+#LABEL "org.opencontainers.image.created"=""
+#LABEL "org.opencontainers.image.version"=""
+#LABEL "org.opencontainers.image.revision"=""
+LABEL "maintainer"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.authors"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.url"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.documentation"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.source"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.vendor"="Docker Workspace"
+LABEL "org.opencontainers.image.licenses"="MIT"
+LABEL "org.opencontainers.image.ref.name"="{{ php_real_version }}-cli"
+LABEL "org.opencontainers.image.title"="PHP-CLI {{ php_real_version }}"
+LABEL "org.opencontainers.image.description"="PHP-CLI {{ php_real_version }}"
+
+
+###
+### Arguments
+###
+{% if php_version in [7.2, 7.3, 7.4] %}
+ARG COMPOSER_VERSION=1.10.22
+{% elif php_version in [8.0, 8.1, 8.2] %}
+ARG COMPOSER_VERSION=2.2.23
+{% else %}
+ARG COMPOSER_VERSION=2.7.0
+{% endif %}
+ARG DOCROOT=/app \
+    MAGENTO_ROOT=/app \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_HOME=/composer \
+    CRONTAB=""
+
+
+###
+### Envs
+###
+ENV MY_USER="www" \
+    MY_GROUP="www" \
+    MY_UID="1000" \
+    MY_GID="1000" \
+    PHP_VERSION="{{ php_version }}" \
+    COMPOSER_MEMORY_LIMIT -1 \
+    COMPOSER_ALLOW_SUPERUSER ${COMPOSER_ALLOW_SUPERUSER} \
+    COMPOSER_HOME ${COMPOSER_HOME} \
+    COMPOSER_CLEAR_CACHE false \
+    PHP_MEMORY_LIMIT -1 \
+    PHP_VALIDATE_TIMESTAMPS 1 \
+    DEBUG false \
+    MAGENTO_RUN_MODE production \
+    SENDMAIL_PATH /dev/null \
+    PHPRC ${DOCROOT}/APPNAME/php.ini
+{% set env_php_extensions = " ".join(default_extensions) -%}
+{%- if env_php_extensions -%}
+ENV PHP_EXTENSIONS {{ env_php_extensions }}
+{%- endif %}
+
+
+###
+### User/Group
+###
+RUN set -eux \
+    && groupadd -g ${MY_GID} -r ${MY_GROUP} \
+    && useradd -g ${MY_GROUP} -u ${MY_UID} -d ${DOCROOT} -s /bin/bash ${MY_USER}
+
+
+{#
+###################################################################################################
+  Loop over enabled build dependencies and gather build dependencies
+###################################################################################################
+#}
+{%- set build_deps = [] -%}
+{%- for ext in extensions_enabled -%}
+    {#- Not disabled AND not already available by default -#}
+    {%- if (('disabled' not in extensions_available[ext]) or (php_version not in extensions_available[ext]['disabled']))
+        and ('already_avail' not in extensions_available[ext] or php_version not in extensions_available[ext]['already_avail']) -%}
+        {#- Version specific build dependency available? -#}
+        {%- if php_version in extensions_available[ext] and 'build_dep' in extensions_available[ext][php_version] -%}
+            {%- for build_dep in extensions_available[ext][php_version]['build_dep'] -%}
+                {#- Append build dependencies to our array -#}
+                {{- build_deps.append(build_dep) -}}
+            {%- endfor -%}
+        {#- Generic build dependency available? -#}
+        {%- elif 'all' in extensions_available[ext] and 'build_dep' in extensions_available[ext]['all'] -%}
+            {%- for build_dep in extensions_available[ext]['all']['build_dep'] -%}
+                {#- Append build dependencies to our array -#}
+                {{- build_deps.append(build_dep) -}}
+            {%- endfor -%}
+        {%- endif -%}
+    {%- endif -%}
+{%- endfor -%}
+{%- for ext in help_software_enabled -%}
+    {%- for dep in fn.get_build_dep(php_version, ext, help_software_available) | from_json -%}
+        {%- if dep -%}
+            {{- build_deps.append(dep) -}}
+        {%- endif -%}
+    {%- endfor -%}
+{%- endfor -%}
+###
+### Install
+###
+RUN set -eux \
+    && DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests \
+    apt-utils \
+    cron \
+    git \
+    mariadb-client \
+    nano \
+    nodejs \
+    python3 \
+    python3-pip \
+    redis-tools \
+    sendmail-bin \
+    sendmail \
+    sudo \
+    unzip \
+    vim \
+    openssh-client \
+{% for build_dep in build_deps | unique | sort %}
+    {{ build_dep }} \
+{% endfor %}
+{% if php_version in [8.2, 8.3] %}
+    python3-yaml \
+{% endif %}
+    && rm -rf /var/lib/apt/lists/*
+
+
+{% if php_version in [7.2, 7.3, 7.4, 8.0, 8.1] %}
+# Install Python packages
+RUN set -eux \
+    pip3 install --upgrade setuptools \
+    && pip3 install pyyaml
+
+{% endif %}
+
+
+###
+### PHP-CLI required helper tools from group_vars (php-helper-tools.yml)
+###
+{% for tool in help_software_enabled -%}
+    {# Not disabled #}
+    {%- if ('disabled' not in help_software_available[tool]) or (php_version not in help_software_available[tool]['disabled']) -%}
+        {{- "\n" }}# -------------------- {{ tool }} --------------------
+        {{- "\n" }}RUN set -eux \
+        {#- -#}
+        {#- [PRE] -#}
+        {%- if fn.get_pre(php_version, tool, help_software_available) | length -%}
+            {{ "\n\t" }}&& {{ fn.get_pre(php_version, tool, help_software_available) | indent( "\t" ) }}{{ "\t\\" }}
+        {%- endif -%}
+        {#- -#}
+        {#- [COMMAND] -#}
+        {%- if fn.get_type(php_version, tool, help_software_available) == 'custom' -%}
+            {{ "\n\t" }}&& {{ fn.tool_custom_get_command(php_version, tool, help_software_available) | indent( "\t" ) }}{{ "\t\\" }}
+        {%- endif -%}
+        {#- -#}
+        {#- [POST] -#}
+        {%- if fn.get_post(php_version, tool, help_software_available) | length -%}
+            {{ "\n\t" }}&& {{ fn.get_post(php_version, tool, help_software_available) | indent( "\t" ) }}{{ "\t\\" }}
+        {%- endif -%}
+        {#- -#}
+        {#- Finalize -#}
+        {{ "\n\t" }}&& true{{ "\n" }}
+    {%- endif -%}
+{%- endfor %}
+
+
+###
+### Install defined php-cli-builds
+###
+{% for tool in tools_enabled -%}
+    {# Not disabled #}
+    {%- if ('disabled' not in tools_available[tool]) or (php_version not in tools_available[tool]['disabled']) -%}
+        {{- "\n" }}# -------------------- ({{ fn.get_type(php_version, tool, tools_available) }}) {{ tool }} --------------------
+        {{- "\n" }}RUN set -eux \
+        {#- -#}
+        {#- [PRE] -#}
+        {%- if fn.get_pre(php_version, tool, tools_available) | length -%}
+            {{ "\n\t" }}&& {{ fn.get_pre(php_version, tool, tools_available) | indent( "\t" ) }}{{ "\t\\" }}
+        {%- endif -%}
+        {#- -#}
+        {#- [CUSTOM] -#}
+        {%- if fn.get_type(php_version, tool, tools_available) == 'custom' -%}
+            {{ "\n\t" }}&& {{ fn.tool_custom_get_command(php_version, tool, tools_available) | indent( "\t" ) }}{{ "\t\\" }}
+        {%- endif -%}
+        {#- -#}
+        {#- [NPM] -#}
+        {%- if fn.get_type(php_version, tool, tools_available) == 'npm' -%}
+            {%- set npm_package = fn.tool_npm_get_package(php_version, tool, tools_available) -%}
+            {%- set npm_version = fn.tool_npm_get_version(php_version, tool, tools_available) -%}
+            {%- set npm_binary = fn.tool_npm_get_binary(php_version, tool, tools_available) -%}
+            {{ "\n\t" }}&& su -c '. {{ nvm_home }}/nvm.sh; npm install --location=global {{ npm_package }}{{ npm_version }}' www \
+            {%- if npm_binary | length -%}
+                {{ "\n\t" }}&& ln -s {{ nvm_home }}/versions/node/$(su -c '. {{ nvm_home }}/nvm.sh; node --version' www)/bin/{{ npm_binary }} /usr/local/bin/ \
+            {%- endif -%}
+        {%- endif -%}
+        {#- -#}
+        {#- [COMPOSER] -#}
+        {%- if fn.get_type(php_version, tool, tools_available) == 'composer' -%}
+            {%- set comp_composer = fn.tool_composer_get_composer(php_version, tool, tools_available) -%}
+            {%- set comp_package = fn.tool_composer_get_package(php_version, tool, tools_available) -%}
+            {%- set comp_version = fn.tool_composer_get_version(php_version, tool, tools_available) -%}
+            {%- set comp_flags   = fn.tool_composer_get_flags(php_version, tool, tools_available) -%}
+            {%- set comp_binary  = fn.tool_composer_get_binary(php_version, tool, tools_available) -%}
+            {#- FIXME: use su -c ' www -#}
+            {{ "\n\t" }}&& COMPOSER_HOME="{{ composer_home }}" COMPOSER_MEMORY_LIMIT=-1 /usr/local/bin/composer-{{ comp_composer }} global require --no-interaction --no-cache {{ comp_flags }} {{ comp_package }}{{ comp_version }} \
+            {%- if comp_binary | length -%}
+                {{ "\n\t" }}&& ln -s {{ composer_home }}/vendor/{{ comp_package }}/{{ comp_binary }} /usr/local/bin/ \
+            {%- endif -%}
+            {{ "\n\t" }}&& rm -rf {{ composer_home }}/cache/* \
+        {%- endif -%}
+        {#- -#}
+        {#- [RUBYGEM] -#}
+        {%- if fn.get_type(php_version, tool, tools_available) == 'rubygem' -%}
+            {%- set rubygem_package = fn.tool_rubygem_get_package(php_version, tool, tools_available) -%}
+            {%- set rubygem_version = fn.tool_rubygem_get_version(php_version, tool, tools_available) -%}
+            {{ "\n\t" }}&& gem install {{ rubygem_package }}{{ rubygem_version }} \
+        {%- endif -%}
+        {#- -#}
+        {#- [PIP] -#}
+        {%- if fn.get_type(php_version, tool, tools_available) == 'pip' -%}
+            {%- set pip_package = fn.tool_pip_get_package(php_version, tool, tools_available) -%}
+            {%- set pip_version = fn.tool_pip_get_version(php_version, tool, tools_available) -%}
+            {%- set pip_flags   = fn.tool_pip_get_flags(php_version, tool, tools_available) -%}
+            {{ "\n\t" }}&& pip install --no-cache-dir --no-compile --force-reinstall {{ pip_package }}{{ pip_version }} \
+        {%- endif -%}
+        {#- -#}
+        {#- [POST] -#}
+        {%- if fn.get_post(php_version, tool, tools_available) | length -%}
+            {{ "\n\t" }}&& {{ fn.get_post(php_version, tool, tools_available) | indent( "\t" ) }}{{ "\t\\" }}
+        {%- endif -%}
+        {#- -#}
+        {#- [CHECK] -#}
+        {%- if 'check' in tools_available[tool] -%}
+            {{ "\n\t" }}&& {{ tools_available[tool]['check'] | indent( "\t" ) }}{{ "\t\\" }}
+        {%- endif -%}
+        {#- -#}
+        {#- Finalize -#}
+        {{ "\n\t" }}&& true{{ "\n" }}
+    {%- endif -%}
+{%- endfor %}
+
+
+# Install MailHog
+COPY --from=builder /go/src/github.com/mailhog/mhsendmail/mhsendmail /usr/local/bin/
+RUN sudo chmod +x /usr/local/bin/mhsendmail
+
+
+###
+### Install and enable PHP modules
+###
+{# Loop over enabled extensions #}
+{% for ext in extensions_enabled %}
+    {#-
+    ###############################################################################################
+    # Not disabled AND not already enabled
+    ###############################################################################################
+    -#}
+    {%- if (('disabled' not in extensions_available[ext]) or (php_version not in extensions_available[ext]['disabled']))
+        and ('already_avail' not in extensions_available[ext] or php_version not in extensions_available[ext]['already_avail']) %}
+# -------------------- Installing PHP Extension: {{ ext }} --------------------
+RUN set -eux \
+        {#-
+         # --------------------------------------------------------------------------------
+         # PRE COMMAND
+         # --------------------------------------------------------------------------------
+        -#}
+        {#- Version specific pre-command available? -#}
+        {%- if php_version in extensions_available[ext] and 'pre' in extensions_available[ext][php_version] -%}
+            {{- "\n\t" }}# Version specific pre-command
+            {{- "\n\t" }}&& {{ extensions_available[ext][php_version]['pre'] }} \
+        {#- Generic pre-command available? -#}
+        {%- elif 'all' in extensions_available[ext] and 'pre' in extensions_available[ext]['all'] %}
+            {{- "\n\t" }}# Generic pre-command
+            {{- "\n\t" }}&& {{ extensions_available[ext]['all']['pre'] }} \
+        {%- endif -%}
+        {#-
+         # --------------------------------------------------------------------------------
+         # INSTALLATION (VERSION SPECIFIC)
+         # --------------------------------------------------------------------------------
+         #}
+        {%- if php_version in extensions_available[ext] and 'type' in extensions_available[ext][php_version] -%}
+            {{- "\n\t" }}# Installation: Version specific
+            {#-
+             # -------------------- 1.) Builtin --------------------
+            -#}
+            {%- if extensions_available[ext][php_version]['type'] == 'builtin' -%}
+                {{- "\n\t" }}# Type:         Built-in extension
+                {%- if 'configure' in extensions_available[ext][php_version] -%}
+                    {{- "\n\t" }}# Custom:       configure command
+                    {{- "\n\t" }}&& docker-php-ext-configure {{ ext }} {{ extensions_available[ext][php_version]['configure'] }} \
+                {%- elif 'configure' in extensions_available[ext]['all'] -%}
+                    {{- "\n\t" }}# Default:      configure command
+                    {{- "\n\t" }}&& docker-php-ext-configure {{ ext }} {{ extensions_available[ext]['all']['configure'] }} \
+                {%- endif -%}
+                {{- "\n\t" }}# Installation
+                {{- "\n\t" }}&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) {{ ext }} \
+            {#-
+             # -------------------- 2.) PECL --------------------
+            -#}
+            {%- elif extensions_available[ext][php_version]['type'] == 'pecl' -%}
+                {{- "\n\t" }}# Type:         PECL extension
+                {%- if 'command' in extensions_available[ext][php_version] -%}
+                    {{- "\n\t" }}# Custom:       Pecl command
+                    {{- "\n\t" }}&& {{ extensions_available[ext][php_version]['command'] }} \
+                {%- else -%}
+                    {{- "\n\t" }}# Default:      Pecl command
+                    {{- "\n\t" }}&& pecl install {{ ext }}{% if 'version' in extensions_available[ext][php_version] %}-{{ extensions_available[ext][php_version]['version'] }}{% endif %} \
+                {%- endif -%}
+            {#-
+             # -------------------- 3.) GIT --------------------
+            -#}
+            {%- elif extensions_available[ext][php_version]['type'] == 'git' -%}
+                {{- "\n\t" }}# Type:         GIT extension
+                {%- if 'flags' in extensions_available[ext][php_version] -%}
+                    {{- "\n\t" }}&& git clone {{ extensions_available[ext][php_version]['flags'] }} {{ extensions_available[ext][php_version]['git_url'] }} /tmp/{{ ext }} \
+                {%- elif 'flags' in extensions_available[ext]['all'] -%}
+                    {{- "\n\t" }}&& git clone {{ extensions_available[ext]['all']['flags'] }} {{ extensions_available[ext]['all']['git_url'] }} /tmp/{{ ext }} \
+                {%- else -%}
+                    {{- "\n\t" }}&& git clone {{ extensions_available[ext][php_version]['git_url'] }} /tmp/{{ ext }} \
+                {%- endif -%}
+                {{- "\n\t" }}&& cd /tmp/{{ ext }} \
+                {%- if 'git_ref' in extensions_available[ext][php_version] -%}
+                    {{- "\n\t" }}# Custom:       Branch
+                    {{- "\n\t" }}&& git checkout {{ extensions_available[ext][php_version]['git_ref'] }} \
+                {%- endif -%}
+                {%- if 'command' in extensions_available[ext][php_version] -%}
+                    {{- "\n\t" }}# Custom:       Install command
+                    {{- "\n\t" }}&& {{ extensions_available[ext][php_version]['command'] }} \
+                {%- else -%}
+                    {{- "\n\t" }}# Default:      Install command
+                    {{- "\n\t" }}&& phpize \
+                    {{- "\n\t" }}&& ./configure {% if 'configure' in extensions_available[ext][php_version] %} {{ extensions_available[ext][php_version]['configure'] }}{% endif %} \
+                    {{- "\n\t" }}&& make -j$(getconf _NPROCESSORS_ONLN) \
+                    {{- "\n\t" }}&& make install \
+                {%- endif -%}
+            {#-
+             # -------------------- 4.) CUSTOM --------------------
+            -#}
+            {%- elif extensions_available[ext][php_version]['type'] == 'custom' -%}
+                {{- "\n\t" }}# Type:         Custom extension
+                {{- "\n\t" }}&& {{ extensions_available[ext][php_version]['command'] }} \
+            {%- endif -%}
+        {#-
+         # --------------------------------------------------------------------------------
+         # INSTALLATION (GENERIC)
+         # --------------------------------------------------------------------------------
+         #}
+        {%- elif 'all' in extensions_available[ext] and 'type' in extensions_available[ext]['all'] -%}
+            {{- "\n\t" }}# Installation: Generic
+            {#-
+             # -------------------- 1.) Builtin --------------------
+            -#}
+            {%- if extensions_available[ext]['all']['type'] == 'builtin' -%}
+                {{- "\n\t" }}# Type:         Built-in extension
+                {%- if 'configure' in extensions_available[ext]['all'] -%}
+                    {{- "\n\t" }}# Custom:       configure command
+                    {{- "\n\t" }}&& docker-php-ext-configure {{ ext }} {{ extensions_available[ext]['all']['configure'] }} \
+                {%- endif -%}
+                {{- "\n\t" }}&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) {{ ext }} \
+            {#-
+             # -------------------- 2.) PECL --------------------
+            -#}
+            {%- elif extensions_available[ext]['all']['type'] == 'pecl' -%}
+                {{- "\n\t" }}# Type:         PECL extension
+                {%- if 'command' in extensions_available[ext]['all'] -%}
+                    {{- "\n\t" }}# Custom:       Pecl command
+                    {{- "\n\t" }}&& {{ extensions_available[ext]['all']['command'] }} \
+                {%- else -%}
+                    {{- "\n\t" }}# Default:      Pecl command
+                    {{- "\n\t" }}&& pecl install {{ ext }}{% if 'version' in extensions_available[ext]['all'] %}-{{ extensions_available[ext]['all']['version'] }}{% endif %} \
+                {%- endif -%}
+            {#-
+             # -------------------- 2.) GIT --------------------
+            -#}
+            {%- elif extensions_available[ext]['all']['type'] == 'git' -%}
+                {{- "\n\t" }}# Type:         GIT extension
+                {%- if 'flags' in extensions_available[ext]['all'] -%}
+                    {{- "\n\t" }}&& git clone {{ extensions_available[ext]['all']['flags'] }} {% if 'git_ref' in extensions_available[ext]['all'] %}--branch={{ extensions_available[ext]['all']['git_ref'] }}{% endif %} {{ extensions_available[ext]['all']['git_url'] }} /tmp/{{ ext }} \
+                {%- else -%}
+                    {{- "\n\t" }}&& git clone {{ extensions_available[ext]['all']['git_url'] }} /tmp/{{ ext }} \
+                {%- endif -%}
+                {{- "\n\t" }}&& cd /tmp/{{ ext }} \
+                {%- if 'git_ref' in extensions_available[ext]['all'] -%}
+                    {{- "\n\t" }}# Custom:       Branch
+                    {{- "\n\t" }}&& git checkout {{ extensions_available[ext]['all']['git_ref'] }} \
+                {%- endif -%}
+                {%- if 'command' in extensions_available[ext]['all'] -%}
+                    {{- "\n\t" }}# Custom:       Install command
+                    {{- "\n\t" }}&& {{ extensions_available[ext]['all']['command'] }} \
+                {%- else -%}
+                    {{- "\n\t" }}# Default:      Install command
+                    {{- "\n\t" }}&& phpize \
+                    {{- "\n\t" }}&& ./configure {% if 'configure' in extensions_available[ext]['all'] %} {{ extensions_available[ext]['all']['configure'] }}{% endif %} \
+                    {{- "\n\t" }}&& make -j$(getconf _NPROCESSORS_ONLN) \
+                    {{- "\n\t" }}&& make install \
+                {%- endif -%}
+            {#-
+             # -------------------- 4.) CUSTOM --------------------
+            -#}
+            {%- elif extensions_available[ext]['all']['type'] == 'custom' -%}
+                {{- "\n\t" }}# Type:         Custom extension
+                {{- "\n\t" }}&& {{ extensions_available[ext]['all']['command'] }} \
+            {%- endif -%}
+        {%- endif -%}
+        {#-
+         # --------------------------------------------------------------------------------
+         # POST COMMAND
+         # --------------------------------------------------------------------------------
+        -#}
+        {#- Version specific post-command available? -#}
+        {%- if php_version in extensions_available[ext] and 'post' in extensions_available[ext][php_version] -%}
+            {{- "\n\t" }}# Version specific post-command
+            {{- "\n\t" }}&& {{ extensions_available[ext][php_version]['post'] }} \
+        {#- Generic post-command available? -#}
+        {%- elif 'all' in extensions_available[ext] and 'post' in extensions_available[ext]['all'] %}
+            {{- "\n\t" }}# Generic post-command
+            {{- "\n\t" }}&& {{ extensions_available[ext]['all']['post'] }} \
+        {%- endif -%}
+    {#-	End of: Not disabled AND not already enabled -#}
+    {%-	endif -%}
+    {#-
+    ###############################################################################################
+    # Ensure modules that are not disabled have an appropriate ini directive and are loaded
+    ###############################################################################################
+    -#}
+    {%- if ('disabled' not in extensions_available[ext]) or (php_version not in extensions_available[ext]['disabled']) -%}
+        {%- if php_version in extensions_available[ext] and 'load_ext' in extensions_available[ext][php_version] -%}
+            {{- "\n\t" }}# Activate:     Version specific extension
+            {{- "\n\t" }}&& if [ ! -f "/usr/local/etc/php/conf.d/docker-php-ext-{{ ext }}.ini" ]; then \
+            {{- "\n\t" }}	echo "extension={{ extensions_available[ext][php_version]['load_ext'] }}" > "/usr/local/etc/php/conf.d/docker-php-ext-{{ ext }}.ini"; \
+            {{- "\n\t" }}fi \
+        {%- elif 'all' in extensions_available[ext] and 'load_ext' in extensions_available[ext]['all'] -%}
+            {{- "\n\t" }}# Activate:     Generic extension
+            {{- "\n\t" }}&& if [ ! -f "/usr/local/etc/php/conf.d/docker-php-ext-{{ ext }}.ini" ]; then \
+            {{- "\n\t" }}	echo "extension={{ extensions_available[ext]['all']['load_ext'] }}" > "/usr/local/etc/php/conf.d/docker-php-ext-{{ ext }}.ini"; \
+            {{- "\n\t" }}fi \
+        {%- endif -%}
+    {%- endif %}
+    {#-
+    ###############################################################################################
+    # Test extensions
+    ###############################################################################################
+    -#}
+    {#- Not disabled #}
+    {%- if (('disabled' not in extensions_available[ext]) or (php_version not in extensions_available[ext]['disabled']))
+        and ('already_avail' not in extensions_available[ext] or php_version not in extensions_available[ext]['already_avail']) %}
+        {%- if build_fail_fast -%}
+            {{- "\n\t" }}# ---- Test extension ----
+            {{- "\n\t" }}&& (php -v 2>&1 1>/dev/null || true) \
+            {{- "\n\t" }}&& PHP_ERROR="$( php -v 2>&1 1>/dev/null )" \
+            {{- "\n\t" }}&& if [ -n "${PHP_ERROR}" ]; then echo "${PHP_ERROR}"; false; fi \
+            {{- "\n\t" }}&& PHP_ERROR="$( php -i 2>&1 1>/dev/null )" \
+            {{- "\n\t" }}&& if [ -n "${PHP_ERROR}" ]; then echo "${PHP_ERROR}"; false; fi \
+            {{- "\n\t" }}\
+            {%- if ext == 'opcache' -%}
+                {{- "\n\t" }}&& php -m | grep -oiE '^Zend Opcache$' \
+            {%- elif ext not in ['blackfire', 'ioncube'] -%}
+                {{- "\n\t" }}&& php -m | grep -oiE '^{{ ext }}$' \
+            {%- else %}
+                {{- "\n\t" }}&& true
+            {%- endif %}
+            {{- "\n\n\n" }}
+        {%- else -%}
+            {{- "\n\t" }}&& true{{ "\n\n\n" }}
+        {%- endif %}
+    {%- endif %}
+{%- endfor %}
+
+# Shrink everything down
+RUN set -eux \
+    && (find /usr/local/bin  -type f -print0 | xargs -n1 -0 -P$(getconf _NPROCESSORS_ONLN) strip --strip-all -p 2>/dev/null || true) \
+    && (find /usr/local/lib  -type f -print0 | xargs -n1 -0 -P$(getconf _NPROCESSORS_ONLN) strip --strip-all -p 2>/dev/null || true) \
+    && (find /usr/local/sbin -type f -print0 | xargs -n1 -0 -P$(getconf _NPROCESSORS_ONLN) strip --strip-all -p 2>/dev/null || true)
+
+
+###
+### Configure Bash (composer, node yarn)
+###
+RUN set -eux \
+    && { \
+        #echo 'PATH="${PATH}:/usr/local/bin:/usr/local/sbin"'; \
+        echo; \
+        echo "# [Devilbox] Ensure yarn, composer and node are in PATH"; \
+        echo 'PATH="${HOME}/.yarn/bin:${PATH}"'; \
+        echo 'PATH="${HOME}/.composer/vendor/bin:${PATH}"'; \
+        echo 'PATH="{{ nvm_home }}/versions/node/$(node --version)/bin:${PATH}"'; \
+        echo "export PATH"; \
+        echo; \
+        echo "# [Devilbox] Ensure to load nvm"; \
+        echo 'export NVM_DIR="{{ nvm_home }}"'; \
+        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm'; \
+        echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion'; \
+    } | tee -a /home/${MY_USER}/.bashrc /root/.bashrc \
+    && chown ${MY_USER}:${MY_GROUP} /home/${MY_USER}/.bashrc
+
+
+###
+### Copy artifacts from builder
+###
+COPY etc/php-cli.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY etc/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
+COPY etc/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
+COPY etc/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini
+COPY etc/php-gnupg.ini /usr/local/etc/php/conf.d/gnupg.ini
+COPY bin/* /usr/local/bin/
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+
+RUN ["chmod", "+x", \
+    "/docker-entrypoint.sh", \
+    "/usr/local/bin/magento-installer", \
+    "/usr/local/bin/magento-command", \
+    "/usr/local/bin/mftf-command", \
+    "/usr/local/bin/ece-command", \
+    "/usr/local/bin/cloud-build", \
+    "/usr/local/bin/cloud-deploy", \
+    "/usr/local/bin/cloud-post-deploy", \
+    "/usr/local/bin/run-cron", \
+    "/usr/local/bin/run-hooks" \
+]
+
+
+###
+### Volumes
+###
+RUN set -eux \
+    mkdir -p ${DOCROOT}
+VOLUME ${DOCROOT}
+
+
+###
+### Permissions & miscellaneous
+###
+RUN set -eux \
+    chown -R www:www /usr/local /var/www /var/log /usr/local/etc/php/conf.d /etc/cron.d ${DOCROOT} ${MAGENTO_ROOT} ${COMPOSER_HOME}
+RUN set -eux \
+    if [ ! -z "${CRONTAB}" ]; then echo "${CRONTAB}" > /etc/cron.d/magento && touch /var/log/cron.log ; fi
+
+###
+### Where to start inside the container
+###
+WORKDIR ${DOCROOT}
+
+###
+### Entrypoint
+###
+CMD ["bash"]
+ENTRYPOINT ["/docker-entrypoint.sh"]

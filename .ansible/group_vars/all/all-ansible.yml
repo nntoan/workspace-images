@@ -105,17 +105,17 @@ template_dockerfiles_opensearch:
     key: opensearch
     alt: opensearch
 
-template_dockerfiles_nginx:
-  - src: DOCKERFILES/nginx/Dockerfile.j2
-    dst: "../images/nginx/Dockerfile-{{ nginx_version }}"
-    key: nginx
-    alt: nginx
-
-template_dockerfiles_varnish:
-  - src: DOCKERFILES/varnish/Dockerfile.j2
-    dst: "../images/varnish/Dockerfile-{{ varnish_version }}"
-    key: varnish
-    alt: varnish
+#template_dockerfiles_nginx:
+#  - src: DOCKERFILES/nginx/Dockerfile.j2
+#    dst: "../images/nginx/Dockerfile-{{ nginx_version }}"
+#    key: nginx
+#    alt: nginx
+#
+#template_dockerfiles_varnish:
+#  - src: DOCKERFILES/varnish/Dockerfile.j2
+#    dst: "../images/varnish/Dockerfile-{{ varnish_version }}"
+#    key: varnish
+#    alt: varnish
 
 
 # ------------------------------------------------------------------------------------------------------
@@ -125,24 +125,24 @@ template_configurations:
 
 #  # php.ini
 #  - src: CONFIGURATIONS/php.ini.j2
-#    dst: "../Dockerfiles/base/data/php-ini.d/php-{{ php_version }}.ini"
+#    dst: "../images/php/cli/php-ini.d/php-{{ php_version }}.ini"
 #    cfg: "{{ php_settings_ini }}"
 #    key: base
 #    alt: base
 #  - src: CONFIGURATIONS/php.ini.j2
-#    dst: "../Dockerfiles/slim/data/php-ini.d/php-{{ php_version }}.ini"
+#    dst: "../images/php/cli/data/php-ini.d/php-{{ php_version }}.ini"
 #    cfg: "{{ php_settings_ini }}"
 #    key: slim
 #    alt: base  # Alternative key to use when definition is not set in 'slim'
 #
 #  # php-fpm.conf
 #  - src: CONFIGURATIONS/php-fpm.conf.j2
-#    dst: "../Dockerfiles/base/data/php-fpm.conf/php-fpm-{{ php_version }}.conf"
+#    dst: "../images/php/fpm/php-fpm.conf/php-fpm-{{ php_version }}.conf"
 #    cfg: "{{ php_settings_fpm }}"
 #    key: base
 #    alt: base
 #  - src: CONFIGURATIONS/php-fpm.conf.j2
-#    dst: "../Dockerfiles/slim/data/php-fpm.conf/php-fpm-{{ php_version }}.conf"
+#    dst: "../images/php/fpm/data/php-fpm.conf/php-fpm-{{ php_version }}.conf"
 #    cfg: "{{ php_settings_fpm }}"
 #    key: slim
 #    alt: base  # Alternative key to use when definition is not set in 'slim'
