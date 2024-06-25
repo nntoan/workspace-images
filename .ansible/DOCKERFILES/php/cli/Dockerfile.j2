@@ -46,7 +46,7 @@ ARG COMPOSER_VERSION=2.2.23
 {% else %}
 ARG COMPOSER_VERSION=2.7.0
 {% endif %}
-ARG DOCROOT=/app
+ARG DOCROOT=/shared/httpd
 ARG MAGENTO_ROOT=/app
 ARG COMPOSER_ALLOW_SUPERUSER=1
 ARG COMPOSER_HOME=/composer
@@ -535,6 +535,7 @@ COPY ./data/docker-entrypoint.d /docker-entrypoint.d
 RUN set -eux \
     mkdir -p ${DOCROOT}
 VOLUME ${DOCROOT}
+VOLUME /shared/backups
 
 
 ###

@@ -37,7 +37,7 @@ LABEL "org.opencontainers.image.description"="PHP-FPM {{ php_real_version }}"
 ###
 ### Arguments
 ###
-ARG DOCROOT=/app
+ARG DOCROOT=/shared/httpd
 ARG MAGENTO_ROOT=/app
 
 ###
@@ -386,7 +386,7 @@ RUN ["chmod", "+x", "/docker-entrypoint.sh"]
 ###
 ### Where to start inside the container
 ###
-WORKDIR ${MAGENTO_ROOT}
+WORKDIR ${DOCROOT}
 
 
 ###
