@@ -146,17 +146,16 @@ RUN set -eux \
     python3-yaml \
 {% endif %}
     && rm -rf /var/lib/apt/lists/*
-
-
 {% if php_version in [7.2, 7.3, 7.4, 8.0, 8.1] %}
+
+
 # Install Python packages
 RUN set -eux \
     pip3 install --upgrade setuptools \
     && pip3 install pyyaml
 
+
 {% endif %}
-
-
 ###
 ### PHP-CLI required helper tools from group_vars (php-helper-tools.yml)
 ###
@@ -503,18 +502,18 @@ RUN set -eux \
     && { \
         #echo 'PATH="${PATH}:/usr/local/bin:/usr/local/sbin"'; \
         echo; \
-        echo "# [Devilbox] Ensure yarn, composer and node are in PATH"; \
+        echo "# [Workspace] Ensure yarn, composer and node are in PATH"; \
         echo 'PATH="${HOME}/.yarn/bin:${PATH}"'; \
         echo 'PATH="${HOME}/.composer/vendor/bin:${PATH}"'; \
         echo 'PATH="{{ nvm_home }}/versions/node/$(node --version)/bin:${PATH}"'; \
         echo "export PATH"; \
         echo; \
-        echo "# [Devilbox] Ensure to load nvm"; \
+        echo "# [Workspace] Ensure to load nvm"; \
         echo 'export NVM_DIR="{{ nvm_home }}"'; \
         echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm'; \
         echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion'; \
-    } | tee -a /home/${MY_USER}/.bashrc /root/.bashrc \
-    && chown ${MY_USER}:${MY_GROUP} /home/${MY_USER}/.bashrc
+    } | tee -a ${DOCROOT}/.bashrc /root/.bashrc \
+    && chown ${MY_USER}:${MY_GROUP} ${DOCROOT}/.bashrc
 
 
 ###

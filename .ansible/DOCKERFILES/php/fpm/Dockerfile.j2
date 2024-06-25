@@ -336,27 +336,6 @@ RUN set -eux \
 
 
 ###
-### Configure Bash (composer, node yarn)
-###
-RUN set -eux \
-    && { \
-        #echo 'PATH="${PATH}:/usr/local/bin:/usr/local/sbin"'; \
-        echo; \
-        echo "# [Devilbox] Ensure yarn, composer and node are in PATH"; \
-        echo 'PATH="${HOME}/.yarn/bin:${PATH}"'; \
-        echo 'PATH="${HOME}/.composer/vendor/bin:${PATH}"'; \
-        echo 'PATH="{{ nvm_home }}/versions/node/$(node --version)/bin:${PATH}"'; \
-        echo "export PATH"; \
-        echo; \
-        echo "# [Devilbox] Ensure to load nvm"; \
-        echo 'export NVM_DIR="{{ nvm_home }}"'; \
-        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm'; \
-        echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion'; \
-    } | tee -a /home/${MY_USER}/.bashrc /root/.bashrc \
-    && chown ${MY_USER}:${MY_GROUP} /home/${MY_USER}/.bashrc
-
-
-###
 ### Copy artifacts from builder
 ###
 COPY ./data/php-fpm.d/php-fpm-{{ php_version }}.conf /usr/local/etc/php-fpm.conf
