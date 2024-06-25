@@ -41,7 +41,7 @@ ENV PHP_EXTENSIONS bcmath bz2 calendar exif gd gettext intl mysqli mcrypt pcntl 
 ###
 RUN set -eux \
     && groupadd -g ${MY_GID} -r ${MY_GROUP} \
-    && useradd -g ${MY_GROUP} -u ${MY_UID} -d ${DOCROOT} -s /bin/bash ${MY_USER}
+    && useradd -g ${MY_GROUP} -u ${MY_UID} -d ${DOCROOT} -m -s /bin/bash ${MY_USER}
 
 
 ###
