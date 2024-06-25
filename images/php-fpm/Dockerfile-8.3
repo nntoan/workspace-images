@@ -12,7 +12,26 @@ RUN if [ $(uname -m) = "x86_64" ]; then mailhog_arch="amd64"; else mailhog_arch=
     && go get . \
     && GOOS=linux GOARCH=${mailhog_arch} go build -o mhsendmail .
 
-FROM php:7.2-fpm
+FROM php:8.3-fpm
+MAINTAINER "Toan Nguyen" <hello@nntoan.com>
+
+###
+### Labels
+###
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+#LABEL "org.opencontainers.image.created"=""
+#LABEL "org.opencontainers.image.version"=""
+#LABEL "org.opencontainers.image.revision"=""
+LABEL "maintainer"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.authors"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.url"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.documentation"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.source"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.vendor"="Docker Workspace"
+LABEL "org.opencontainers.image.licenses"="MIT"
+LABEL "org.opencontainers.image.ref.name"="8.3-fpm"
+LABEL "org.opencontainers.image.title"="PHP-FPM 8.3"
+LABEL "org.opencontainers.image.description"="PHP-FPM 8.3"
 
 ###
 ### Arguments
@@ -27,7 +46,7 @@ ENV MY_USER="www" \
     MY_GROUP="www" \
     MY_UID="1000" \
     MY_GID="1000" \
-    PHP_VERSION="7.2" \
+    PHP_VERSION="8.3" \
     PHP_MEMORY_LIMIT="2G" \
     PHP_VALIDATE_TIMESTAMPS=1 \
     DEBUG=false \
@@ -60,31 +79,23 @@ RUN set -eux \
     ca-certificates \
     gnupg2 \
     libbz2-dev \
-    libc-client-dev \
     libfreetype6-dev \
-    libgeoip-dev \
     libgmp-dev \
     libgpgme11-dev \
     libicu-dev \
     libjpeg62-turbo-dev \
-    libkrb5-dev \
     libldap2-dev \
-    libmagickcore-dev \
-    libmagickwand-dev \
+    libpcre3-dev \
     libpng-dev \
     libpspell-dev \
-    librecode-dev \
-    librecode0 \
-    libssh2-1 \
-    libssh2-1-dev \
     libtidy-dev \
     libxslt1-dev \
     libyaml-dev \
     libzip-dev \
     lsb-release \
     software-properties-common \
-    wget \
     zip \
+    python3-yaml \
     && rm -rf /var/lib/apt/lists/*
 
 # Install MailHog
@@ -147,18 +158,9 @@ RUN set -eux \
 	# Installation: Version specific
 	# Type:         Built-in extension
 	# Custom:       configure command
-	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
+	&& docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
 	# Installation
 	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) gd \
-	&& true
-
-
-# -------------------- Installing PHP Extension: geoip --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         PECL extension
-	# Default:      Pecl command
-	&& pecl install geoip \
 	&& true
 
 
@@ -187,34 +189,6 @@ RUN set -eux \
 	&& true
 
 
-# -------------------- Installing PHP Extension: igbinary --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         PECL extension
-	# Default:      Pecl command
-	&& pecl install igbinary \
-	&& true
-
-
-# -------------------- Installing PHP Extension: imagick --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         PECL extension
-	# Default:      Pecl command
-	&& pecl install imagick \
-	&& true
-
-
-# -------------------- Installing PHP Extension: imap --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         Built-in extension
-	# Custom:       configure command
-	&& docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
-	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) imap \
-	&& true
-
-
 # -------------------- Installing PHP Extension: intl --------------------
 RUN set -eux \
 	# Installation: Generic
@@ -235,10 +209,10 @@ RUN set -eux \
 
 # -------------------- Installing PHP Extension: mailparse --------------------
 RUN set -eux \
-	# Installation: Version specific
+	# Installation: Generic
 	# Type:         PECL extension
 	# Default:      Pecl command
-	&& pecl install mailparse-3.1.3 \
+	&& pecl install mailparse \
 	&& true
 
 
@@ -261,7 +235,7 @@ RUN set -eux \
 
 # -------------------- Installing PHP Extension: oauth --------------------
 RUN set -eux \
-	# Installation: Generic
+	# Installation: Version specific
 	# Type:         PECL extension
 	# Default:      Pecl command
 	&& pecl install oauth \
@@ -303,15 +277,6 @@ RUN set -eux \
 	&& true
 
 
-# -------------------- Installing PHP Extension: propro --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         PECL extension
-	# Default:      Pecl command
-	&& pecl install propro \
-	&& true
-
-
 # -------------------- Installing PHP Extension: pspell --------------------
 RUN set -eux \
 	# Installation: Generic
@@ -326,14 +291,6 @@ RUN set -eux \
 	# Type:         PECL extension
 	# Default:      Pecl command
 	&& pecl install raphf \
-	&& true
-
-
-# -------------------- Installing PHP Extension: recode --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         Built-in extension
-	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) recode \
 	&& true
 
 
@@ -370,31 +327,6 @@ RUN set -eux \
 	&& true
 
 
-# -------------------- Installing PHP Extension: zookeeper --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         Custom extension
-	&& mkdir -p /tmp/zoo \
-&& cd /tmp/zoo \
-&& git clone https://github.com/php-zookeeper/php-zookeeper.git \
-&& curl -LO https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz \
-&& tar -xf zookeeper-3.4.14.tar.gz \
-&& cp zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/generated/zookeeper.jute.h zookeeper-3.4.14/zookeeper-client/zookeeper-client-c/include \
-&& cd zookeeper-3.4.14/zookeeper-client/zookeeper-client-c \
-&& ./configure \
-&& sed -i 's/CFLAGS = -g -O2 -D_GNU_SOURCE/CFLAGS = -g -O2 -D_GNU_SOURCE -Wno-error=format-overflow -Wno-error=stringop-truncation/g' Makefile \
-&& make \
-&& make install \
-&& ldconfig \
-&& cd /tmp/zoo/php-zookeeper \
-&& phpize \
-&& ./configure --with-libzookeeper-dir=../zookeeper-3.4.14/zookeeper-client/zookeeper-client-c \
-&& make \
-&& make install \
- \
-	&& true
-
-
 # -------------------- Installing PHP Extension: sodium --------------------
 RUN set -eux \
 	# Installation: Generic
@@ -412,15 +344,6 @@ RUN set -eux \
 && rm -rf /tmp/libsodium \
 && pecl install -o -f libsodium \
  \
-	&& true
-
-
-# -------------------- Installing PHP Extension: ssh2 --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         PECL extension
-	# Default:      Pecl command
-	&& pecl install ssh2-1.1.2 \
 	&& true
 
 
@@ -461,15 +384,16 @@ RUN set -eux \
 	# Installation: Version specific
 	# Type:         PECL extension
 	# Default:      Pecl command
-	&& pecl install xdebug-3.1.2 \
+	&& pecl install xdebug-3.3.0 \
 	&& true
 
 
 # -------------------- Installing PHP Extension: xmlrpc --------------------
 RUN set -eux \
-	# Installation: Generic
-	# Type:         Built-in extension
-	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) xmlrpc \
+	# Installation: Version specific
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install xmlrpc-1.0.0RC3 \
 	&& true
 
 
@@ -492,29 +416,9 @@ RUN set -eux \
 
 # -------------------- Installing PHP Extension: zip --------------------
 RUN set -eux \
-	# Installation: Version specific
-	# Type:         Built-in extension
-	# Custom:       configure command
-	&& docker-php-ext-configure zip --with-libzip \
-	# Installation
-	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) zip \
-	&& true
-
-
-# -------------------- Installing PHP Extension: ioncube --------------------
-RUN set -eux \
 	# Installation: Generic
-	# Type:         Custom extension
-	&& EXTENSION_DIR="$( php -i | grep ^extension_dir | awk -F '=>' '{print $2}' | xargs )" \
-&& if [ ! -d "${EXTENSION_DIR}" ]; then mkdir -p "${EXTENSION_DIR}"; fi \
-&& curl -sS --fail -k https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_$(dpkg-architecture --query DEB_HOST_GNU_CPU | sed 's/_/-/g').tar.gz -L -o ioncube.tar.gz \
-&& tar xvfz ioncube.tar.gz \
-&& cd ioncube \
-&& cp "ioncube_loader_lin_7.2.so" "${EXTENSION_DIR}/ioncube.so" \
-&& cd ../ \
-&& rm -rf ioncube \
-&& rm -rf ioncube.tar.gz \
- \
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) zip \
 	&& true
 
 
@@ -529,8 +433,8 @@ RUN set -eux \
 ###
 ### Copy artifacts from builder
 ###
-COPY ./data/php-fpm.d/php-fpm-7.2.conf /usr/local/etc/php-fpm.conf
-COPY ./data/php-ini.d/php-fpm-7.2.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY ./data/php-fpm.d/php-fpm-8.3.conf /usr/local/etc/php-fpm.conf
+COPY ./data/php-ini.d/php-fpm-8.3.ini /usr/local/etc/php/conf.d/zz-magento.ini
 COPY ./data/php-ini.d/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
 COPY ./data/php-ini.d/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
 COPY ./data/php-ini.d/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini

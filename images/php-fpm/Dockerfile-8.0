@@ -12,7 +12,26 @@ RUN if [ $(uname -m) = "x86_64" ]; then mailhog_arch="amd64"; else mailhog_arch=
     && go get . \
     && GOOS=linux GOARCH=${mailhog_arch} go build -o mhsendmail .
 
-FROM php:8.2-fpm
+FROM php:8.0.14-fpm
+MAINTAINER "Toan Nguyen" <hello@nntoan.com>
+
+###
+### Labels
+###
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+#LABEL "org.opencontainers.image.created"=""
+#LABEL "org.opencontainers.image.version"=""
+#LABEL "org.opencontainers.image.revision"=""
+LABEL "maintainer"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.authors"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.url"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.documentation"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.source"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.vendor"="Docker Workspace"
+LABEL "org.opencontainers.image.licenses"="MIT"
+LABEL "org.opencontainers.image.ref.name"="8.0-fpm"
+LABEL "org.opencontainers.image.title"="PHP-FPM 8.0"
+LABEL "org.opencontainers.image.description"="PHP-FPM 8.0.14"
 
 ###
 ### Arguments
@@ -27,7 +46,7 @@ ENV MY_USER="www" \
     MY_GROUP="www" \
     MY_UID="1000" \
     MY_GID="1000" \
-    PHP_VERSION="8.2" \
+    PHP_VERSION="8.0" \
     PHP_MEMORY_LIMIT="2G" \
     PHP_VALIDATE_TIMESTAMPS=1 \
     DEBUG=false \
@@ -76,7 +95,6 @@ RUN set -eux \
     lsb-release \
     software-properties-common \
     zip \
-    python3-yaml \
     && rm -rf /var/lib/apt/lists/*
 
 # Install MailHog
@@ -390,7 +408,7 @@ RUN set -eux \
 	# Installation: Version specific
 	# Type:         PECL extension
 	# Default:      Pecl command
-	&& pecl install xdebug-3.2.0 \
+	&& pecl install xdebug-3.1.2 \
 	&& true
 
 
@@ -439,8 +457,8 @@ RUN set -eux \
 ###
 ### Copy artifacts from builder
 ###
-COPY ./data/php-fpm.d/php-fpm-8.2.conf /usr/local/etc/php-fpm.conf
-COPY ./data/php-ini.d/php-fpm-8.2.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY ./data/php-fpm.d/php-fpm-8.0.conf /usr/local/etc/php-fpm.conf
+COPY ./data/php-ini.d/php-fpm-8.0.ini /usr/local/etc/php/conf.d/zz-magento.ini
 COPY ./data/php-ini.d/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
 COPY ./data/php-ini.d/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
 COPY ./data/php-ini.d/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini

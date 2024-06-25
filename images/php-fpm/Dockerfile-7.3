@@ -1,5 +1,5 @@
 # vi: ft=dockerfile
-# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/php/cli/Dockerfile.j2 instead.
+# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/php/fpm/Dockerfile.j2 instead.
 
 FROM golang:1.15 AS builder
 
@@ -12,8 +12,7 @@ RUN if [ $(uname -m) = "x86_64" ]; then mailhog_arch="amd64"; else mailhog_arch=
     && go get . \
     && GOOS=linux GOARCH=${mailhog_arch} go build -o mhsendmail .
 
-
-FROM php:8.0.14-cli
+FROM php:7.3-fpm
 MAINTAINER "Toan Nguyen" <hello@nntoan.com>
 
 ###
@@ -30,21 +29,15 @@ LABEL "org.opencontainers.image.documentation"="https://github.com/nntoan/worksp
 LABEL "org.opencontainers.image.source"="https://github.com/nntoan/workspace-images"
 LABEL "org.opencontainers.image.vendor"="Docker Workspace"
 LABEL "org.opencontainers.image.licenses"="MIT"
-LABEL "org.opencontainers.image.ref.name"="8.0.14-cli"
-LABEL "org.opencontainers.image.title"="PHP-CLI 8.0.14"
-LABEL "org.opencontainers.image.description"="PHP-CLI 8.0.14"
-
+LABEL "org.opencontainers.image.ref.name"="7.3-fpm"
+LABEL "org.opencontainers.image.title"="PHP-FPM 7.3"
+LABEL "org.opencontainers.image.description"="PHP-FPM 7.3"
 
 ###
 ### Arguments
 ###
-ARG COMPOSER_VERSION=2.2.23
 ARG DOCROOT=/app
 ARG MAGENTO_ROOT=/app
-ARG COMPOSER_ALLOW_SUPERUSER=1
-ARG COMPOSER_HOME=/composer
-ARG CRONTAB=""
-
 
 ###
 ### Envs
@@ -53,12 +46,8 @@ ENV MY_USER="www" \
     MY_GROUP="www" \
     MY_UID="1000" \
     MY_GID="1000" \
-    PHP_VERSION="8.0" \
-    COMPOSER_MEMORY_LIMIT=-1 \
-    COMPOSER_ALLOW_SUPERUSER="${COMPOSER_ALLOW_SUPERUSER}" \
-    COMPOSER_HOME="${COMPOSER_HOME}" \
-    COMPOSER_CLEAR_CACHE=false \
-    PHP_MEMORY_LIMIT=-1 \
+    PHP_VERSION="7.3" \
+    PHP_MEMORY_LIMIT="2G" \
     PHP_VALIDATE_TIMESTAMPS=1 \
     DEBUG=false \
     MAGENTO_RUN_MODE="production" \
@@ -82,122 +71,38 @@ RUN set -eux \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests \
     apt-utils \
-    cron \
-    git \
-    mariadb-client \
-    nano \
-    nodejs \
-    python3 \
-    python3-pip \
-    redis-tools \
     sendmail-bin \
     sendmail \
     sudo \
-    unzip \
-    vim \
-    openssh-client \
+    iproute2 \
+    git \
     ca-certificates \
     gnupg2 \
     libbz2-dev \
+    libc-client-dev \
     libfreetype6-dev \
+    libgeoip-dev \
     libgmp-dev \
     libgpgme11-dev \
     libicu-dev \
     libjpeg62-turbo-dev \
+    libkrb5-dev \
     libldap2-dev \
-    libpcre3-dev \
+    libmagickcore-dev \
+    libmagickwand-dev \
     libpng-dev \
     libpspell-dev \
+    librecode-dev \
+    librecode0 \
     libtidy-dev \
     libxslt1-dev \
     libyaml-dev \
     libzip-dev \
     lsb-release \
     software-properties-common \
+    wget \
     zip \
     && rm -rf /var/lib/apt/lists/*
-
-
-# Install Python packages
-RUN set -eux \
-    pip3 install --upgrade setuptools \
-    && pip3 install pyyaml
-
-
-###
-### PHP-CLI required helper tools from group_vars (php-helper-tools.yml)
-###
-
-# -------------------- composer --------------------
-RUN set -eux \
-	&& COMPOSER_1_VERSION="latest-1.x" \
-	&& COMPOSER_2_VERSION="2.2.23" \
-	\
-	&& curl -sS -L --fail "https://getcomposer.org/download/${COMPOSER_1_VERSION}/composer.phar" > /usr/local/bin/composer-1 \
-	&& curl -sS -L --fail "https://getcomposer.org/download/${COMPOSER_2_VERSION}/composer.phar" > /usr/local/bin/composer-2 \
-	&& chmod +x /usr/local/bin/composer-1 \
-	&& chmod +x /usr/local/bin/composer-2 \
-	\
-	&& ln -sf /usr/local/bin/composer-2 /usr/local/bin/composer \
-	\
-	&& true
-
-# -------------------- nvm --------------------
-RUN set -eux \
-	&& NODE_VERSION="--lts" \
-	\
-	&& NVM_VERSION="$( \
-	  curl -sS 'https://github.com/nvm-sh/nvm/releases' \
-	  | grep -Eo '/nvm-sh/nvm/releases/tag/v?[.0-9]+"' \
-	  | grep -Eo 'v?[.0-9]+' \
-	  | sort -V \
-	  | tail -1 \
-	)" \
-	&& mkdir -p /opt/nvm \
-	&& curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" \
-	  | NVM_DIR="/opt/nvm" bash \
-	\
-	&& chown -R www:www "/opt/nvm" \
-	\
-	&& su  -c ". /opt/nvm/nvm.sh; nvm install ${NODE_VERSION}" www \
-	&& su  -c ". /opt/nvm/nvm.sh; nvm use ${NODE_VERSION}" www \
-	&& su  -c ". /opt/nvm/nvm.sh; corepack enable" www \
-	\
-	&& ln -s "/opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/bin/corepack" /usr/local/bin/ \
-	&& ln -s "/opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/bin/node" /usr/local/bin/ \
-	&& ln -s "/opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/bin/npm" /usr/local/bin/ \
-	&& ln -s "/opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/bin/npx" /usr/local/bin/ \
-	&& ln -s "/opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/bin/yarn" /usr/local/bin/ \
-	\
-	&& chmod 0777 /opt/nvm \
-	&& find /opt/nvm -type f -print0 | xargs -n1 -0 chmod go+w \
-	&& find /opt/nvm -type d -print0 | xargs -n1 -0 chmod 0777 \
-	\
-	&& rm -rf /opt/nvm/.cache \
-	&& rm -rf /opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/share \
-	&& rm -rf /opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/include \
-	\
-	&& true
-
-
-###
-### Install defined php-cli-builds
-###
-
-# -------------------- (npm) grunt-cli --------------------
-RUN set -eux \
-	&& su -c '. /opt/nvm/nvm.sh; npm install --location=global grunt-cli' www \
-	&& ln -s /opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/bin/grunt /usr/local/bin/ \
-	&& grunt --version | grep -E '[0-9][.0-9]+' || (grunt --version; false)	\
-	&& true
-
-# -------------------- (npm) gulp --------------------
-RUN set -eux \
-	&& su -c '. /opt/nvm/nvm.sh; npm install --location=global gulp' www \
-	&& ln -s /opt/nvm/versions/node/$(su -c '. /opt/nvm/nvm.sh; node --version' www)/bin/gulp /usr/local/bin/ \
-	&& gulp --version | grep -E '[0-9][.0-9]+' || (gulp --version; false)	\
-	&& true
-
 
 # Install MailHog
 COPY --from=builder /go/src/github.com/mailhog/mhsendmail/mhsendmail /usr/local/bin/
@@ -259,9 +164,18 @@ RUN set -eux \
 	# Installation: Version specific
 	# Type:         Built-in extension
 	# Custom:       configure command
-	&& docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
+	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
 	# Installation
 	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) gd \
+	&& true
+
+
+# -------------------- Installing PHP Extension: geoip --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install geoip \
 	&& true
 
 
@@ -287,6 +201,34 @@ RUN set -eux \
 	# Type:         PECL extension
 	# Default:      Pecl command
 	&& pecl install gnupg \
+	&& true
+
+
+# -------------------- Installing PHP Extension: igbinary --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install igbinary \
+	&& true
+
+
+# -------------------- Installing PHP Extension: imagick --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install imagick \
+	&& true
+
+
+# -------------------- Installing PHP Extension: imap --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	# Custom:       configure command
+	&& docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) imap \
 	&& true
 
 
@@ -336,7 +278,7 @@ RUN set -eux \
 
 # -------------------- Installing PHP Extension: oauth --------------------
 RUN set -eux \
-	# Installation: Version specific
+	# Installation: Generic
 	# Type:         PECL extension
 	# Default:      Pecl command
 	&& pecl install oauth \
@@ -378,6 +320,15 @@ RUN set -eux \
 	&& true
 
 
+# -------------------- Installing PHP Extension: propro --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         PECL extension
+	# Default:      Pecl command
+	&& pecl install propro \
+	&& true
+
+
 # -------------------- Installing PHP Extension: pspell --------------------
 RUN set -eux \
 	# Installation: Generic
@@ -392,6 +343,14 @@ RUN set -eux \
 	# Type:         PECL extension
 	# Default:      Pecl command
 	&& pecl install raphf \
+	&& true
+
+
+# -------------------- Installing PHP Extension: recode --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) recode \
 	&& true
 
 
@@ -516,10 +475,9 @@ RUN set -eux \
 
 # -------------------- Installing PHP Extension: xmlrpc --------------------
 RUN set -eux \
-	# Installation: Version specific
-	# Type:         PECL extension
-	# Default:      Pecl command
-	&& pecl install xmlrpc-1.0.0RC3 \
+	# Installation: Generic
+	# Type:         Built-in extension
+	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) xmlrpc \
 	&& true
 
 
@@ -548,6 +506,23 @@ RUN set -eux \
 	&& true
 
 
+# -------------------- Installing PHP Extension: ioncube --------------------
+RUN set -eux \
+	# Installation: Generic
+	# Type:         Custom extension
+	&& EXTENSION_DIR="$( php -i | grep ^extension_dir | awk -F '=>' '{print $2}' | xargs )" \
+&& if [ ! -d "${EXTENSION_DIR}" ]; then mkdir -p "${EXTENSION_DIR}"; fi \
+&& curl -sS --fail -k https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_$(dpkg-architecture --query DEB_HOST_GNU_CPU | sed 's/_/-/g').tar.gz -L -o ioncube.tar.gz \
+&& tar xvfz ioncube.tar.gz \
+&& cd ioncube \
+&& cp "ioncube_loader_lin_7.3.so" "${EXTENSION_DIR}/ioncube.so" \
+&& cd ../ \
+&& rm -rf ioncube \
+&& rm -rf ioncube.tar.gz \
+ \
+	&& true
+
+
 
 # Shrink everything down
 RUN set -eux \
@@ -557,35 +532,14 @@ RUN set -eux \
 
 
 ###
-### Configure Bash (composer, node yarn)
-###
-RUN set -eux \
-    && { \
-        #echo 'PATH="${PATH}:/usr/local/bin:/usr/local/sbin"'; \
-        echo; \
-        echo "# [Workspace] Ensure yarn, composer and node are in PATH"; \
-        echo 'PATH="${HOME}/.yarn/bin:${PATH}"'; \
-        echo 'PATH="${HOME}/.composer/vendor/bin:${PATH}"'; \
-        echo 'PATH="/opt/nvm/versions/node/$(node --version)/bin:${PATH}"'; \
-        echo "export PATH"; \
-        echo; \
-        echo "# [Workspace] Ensure to load nvm"; \
-        echo 'export NVM_DIR="/opt/nvm"'; \
-        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm'; \
-        echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion'; \
-    } | tee -a ${DOCROOT}/.bashrc /root/.bashrc \
-    && chown ${MY_USER}:${MY_GROUP} ${DOCROOT}/.bashrc
-
-
-###
 ### Copy artifacts from builder
 ###
-COPY ./data/php-ini.d/php-cli-8.0.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY ./data/php-fpm.d/php-fpm-7.3.conf /usr/local/etc/php-fpm.conf
+COPY ./data/php-ini.d/php-fpm-7.3.ini /usr/local/etc/php/conf.d/zz-magento.ini
 COPY ./data/php-ini.d/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
 COPY ./data/php-ini.d/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
 COPY ./data/php-ini.d/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini
 COPY ./data/php-ini.d/php-gnupg.ini /usr/local/etc/php/conf.d/zz-gnupg.ini
-COPY ./data/bin/* /usr/local/bin/
 COPY ./data/docker-entrypoint.sh /docker-entrypoint.sh
 COPY ./data/docker-entrypoint.d /docker-entrypoint.d
 
@@ -602,31 +556,18 @@ VOLUME ${DOCROOT}
 ### Permissions & miscellaneous
 ###
 RUN set -eux \
-    chown -R www:www /usr/local /var/www /var/log /usr/local/etc/php/conf.d /etc/cron.d ${DOCROOT} ${COMPOSER_HOME}
-RUN set -eux \
-    if [ ! -z "${CRONTAB}" ]; then echo "${CRONTAB}" > /etc/cron.d/magento && touch /var/log/cron.log ; fi
-RUN ["chmod", "+x", \
-    "/docker-entrypoint.sh", \
-    "/usr/local/bin/magento-installer", \
-    "/usr/local/bin/magento-command", \
-    "/usr/local/bin/mftf-command", \
-    "/usr/local/bin/ece-command", \
-    "/usr/local/bin/cloud-build", \
-    "/usr/local/bin/cloud-deploy", \
-    "/usr/local/bin/cloud-post-deploy", \
-    "/usr/local/bin/run-cron", \
-    "/usr/local/bin/run-hooks" \
-]
+    chown -R www:www /usr/local /var/www /var/log /usr/local/etc/php/conf.d ${DOCROOT}
+RUN ["chmod", "+x", "/docker-entrypoint.sh"]
 
 
 ###
 ### Where to start inside the container
 ###
-WORKDIR ${DOCROOT}
+WORKDIR ${MAGENTO_ROOT}
 
 
 ###
 ### Entrypoint
 ###
-CMD ["bash"]
+CMD ["php-fpm", "-R"]
 ENTRYPOINT ["/docker-entrypoint.sh"]

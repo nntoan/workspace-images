@@ -85,11 +85,11 @@ varnish_all_versions:
 # ------------------------------------------------------------------------------------------------------
 template_dockerfiles_php:
   - src: DOCKERFILES/php/cli/Dockerfile.j2
-    dst: "../images/php/cli/Dockerfile-{{ php_version }}"
+    dst: "../images/php-cli/Dockerfile-{{ php_version }}"
     key: php
     alt: php
   - src: DOCKERFILES/php/fpm/Dockerfile.j2
-    dst: "../images/php/fpm/Dockerfile-{{ php_version }}"
+    dst: "../images/php-fpm/Dockerfile-{{ php_version }}"
     key: php
     alt: php
 
@@ -125,19 +125,19 @@ template_configurations_php:
 
   # php.ini
   - src: CONFIGURATIONS/php.ini.j2
-    dst: "../images/php/cli/data/php-ini.d/php-cli-{{ php_version }}.ini"
+    dst: "../images/php-cli/data/php-ini.d/php-cli-{{ php_version }}.ini"
     cfg: "{{ php_settings_ini }}"
     key: cli
     alt: cli
   - src: CONFIGURATIONS/php.ini.j2
-    dst: "../images/php/fpm/data/php-ini.d/php-fpm-{{ php_version }}.ini"
+    dst: "../images/php-fpm/data/php-ini.d/php-fpm-{{ php_version }}.ini"
     cfg: "{{ php_settings_ini }}"
     key: fpm
     alt: fpm  # Alternative key to use when definition is not set in 'fpm'
 
   # php-fpm.conf
   - src: CONFIGURATIONS/php-fpm.conf.j2
-    dst: "../images/php/fpm/data/php-fpm.d/php-fpm-{{ php_version }}.conf"
+    dst: "../images/php-fpm/data/php-fpm.d/php-fpm-{{ php_version }}.conf"
     cfg: "{{ php_settings_fpm }}"
     key: base
     alt: base

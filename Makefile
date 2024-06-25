@@ -20,34 +20,25 @@ include $(MAKEFILES)
 # -------------------------------------------------------------------------------------------------
 # Default configuration
 # -------------------------------------------------------------------------------------------------
-DOCKER_PULL_BASE_IMAGES_IGNORE = devilbox-slim-base devilbox-work-help devilbox-work-tools
 # Own vars
 TAG        = latest
 
 # Makefile.docker overwrites
 ORG_USER   = nntoan
+ORG_REPO   = php-fpm
 NAME       = PHP
+TYPE       = php/fpm
 #VERSION    = 5.6
-IMAGE      = $(ORG_USER)/php-fpm
+IMAGE      = $(ORG_USER)/$(ORG_REPO)
 #FLAVOUR    = debian
 #STAGE      = base
 FILE       = Dockerfile-$(VERSION)
-DIR        = Dockerfiles/$(STAGE)
+DIR        = images/$(TYPE)
 
 ifeq ($(strip $(TAG)),latest)
-DOCKER_TAG = $(VERSION)-$(STAGE)
-BASE_TAG   = $(VERSION)-base
-MODS_TAG   = $(VERSION)-mods
-PROD_TAG   = $(VERSION)-prod
-SLIM_TAG   = $(VERSION)-slim
-WORK_TAG   = $(VERSION)-work
+DOCKER_TAG = $(VERSION)
 else
-DOCKER_TAG = $(VERSION)-$(STAGE)-$(TAG)
-BASE_TAG   = $(VERSION)-base-$(TAG)
-MODS_TAG   = $(VERSION)-mods-$(TAG)
-PROD_TAG   = $(VERSION)-prod-$(TAG)
-SLIM_TAG   = $(VERSION)-slim-$(TAG)
-WORK_TAG   = $(VERSION)-work-$(TAG)
+DOCKER_TAG = $(VERSION)-$(TAG)
 endif
 ARCH       = linux/amd64
 
@@ -132,34 +123,32 @@ endif
 #export DOCKER_BUILDKIT=1
 
 .PHONY: build
-build: check-stage-is-set
-build: check-parent-image-exists
+build: check-type-is-set
 build: ARGS+=--build-arg EXT_DIR=$(EXT_DIR) --build-arg ARCH=$(shell if [ "$(ARCH)" = "linux/amd64" ]; then echo "x86_64"; else echo "aarch64"; fi)
 build: docker-arch-build
 
 .PHONY: rebuild
-rebuild: check-stage-is-set
-rebuild: check-parent-image-exists
+rebuild: check-type-is-set
 rebuild: ARGS+=--build-arg EXT_DIR=$(EXT_DIR) --build-arg ARCH=$(shell if [ "$(ARCH)" = "linux/amd64" ]; then echo "x86_64"; else echo "aarch64"; fi)
 rebuild: docker-arch-rebuild
 
 .PHONY: push
-push: check-stage-is-set
+push: check-type-is-set
 push: check-version-is-set
 push: docker-arch-push
 
 .PHONY: tag
-tag: check-stage-is-set
+tag: check-type-is-set
 tag: check-version-is-set
 tag:
-	docker tag $(IMAGE):$(VERSION)-$(STAGE) $(IMAGE):$(DOCKER_TAG)
+	docker tag $(IMAGE):$(VERSION) $(IMAGE):$(DOCKER_TAG)
 
 
 # -------------------------------------------------------------------------------------------------
 # Save / Load Targets
 # -------------------------------------------------------------------------------------------------
 .PHONY: save
-save: check-stage-is-set
+save: check-type-is-set
 save: check-version-is-set
 save: check-current-image-exists
 save: docker-save
@@ -186,14 +175,14 @@ manifest-push: docker-manifest-push
 # Test Targets
 # -------------------------------------------------------------------------------------------------
 .PHONY: test
-test: check-stage-is-set
+test: check-type-is-set
 test: check-current-image-exists
 test: test-integration
 test: gen-readme
 
 .PHONY: test-integration
 test-integration:
-	./tests/test.sh $(IMAGE) $(ARCH) $(VERSION) $(STAGE) $(DOCKER_TAG)
+	./tests/test.sh $(IMAGE) $(ARCH) $(VERSION) $(TYPE) $(DOCKER_TAG)
 
 
 # -------------------------------------------------------------------------------------------------
@@ -205,7 +194,7 @@ test-integration:
 ###
 .PHONY: gen-readme
 gen-readme: check-version-is-set
-gen-readme: check-stage-is-set
+gen-readme: check-type-is-set
 gen-readme: _gen-readme-docs
 gen-readme: _gen-readme-main
 
@@ -240,15 +229,15 @@ _gen-readme-main:
 ###
 .PHONY: gen-dockerfiles
 gen-dockerfiles:
-	@echo "################################################################################"
-	@echo "# Generating PHP modules"
-	@echo "################################################################################"
-	#./bin/gen-php-modules.py $(MODS)
-	@echo
-	@echo "################################################################################"
-	@echo "# Generating Tools"
-	@echo "################################################################################"
-	#./bin/gen-php-tools.py $(TOOLS)
+#	@echo "################################################################################"
+#	@echo "# Generating PHP modules"
+#	@echo "################################################################################"
+#	./bin/gen-php-modules.py $(MODS)
+#	@echo
+#	@echo "################################################################################"
+#	@echo "# Generating Tools"
+#	@echo "################################################################################"
+#	./bin/gen-php-tools.py $(TOOLS)
 	@echo
 	@echo "################################################################################"
 	@echo "# Generating Dockerfiles"
@@ -263,6 +252,7 @@ gen-dockerfiles:
 		cytopia/ansible:2.12-tools ansible-playbook generate.yml \
 			-e ansible_python_interpreter=/usr/bin/python3 \
 			-e docker_user=$(ORG_USER) \
+			-e docker_repo=$(ORG_REPO) \
 			-e \"{build_fail_fast: $(FAIL_FAST)}\" \
 			--forks 50 \
 			--diff $(ARGS)
@@ -286,18 +276,18 @@ check-version-is-set:
 	fi
 
 ###
-### Ensures the STAGE variable is set
+### Ensures the TYPE variable is set
 ###
-.PHONY: check-stage-is-set
-check-stage-is-set:
-	@if [ "$(STAGE)" = "" ]; then \
-		echo "This make target requires the STAGE variable to be set."; \
-		echo "make <target> STAGE="; \
+.PHONY: check-type-is-set
+check-type-is-set:
+	@if [ "$(TYPE)" = "" ]; then \
+		echo "This make target requires the TYPE variable to be set."; \
+		echo "make <target> TYPE="; \
 		echo "Exiting."; \
 		exit 1; \
 	fi
-	@if [ "$(STAGE)" != "base" ] && [ "$(STAGE)" != "mods" ] && [ "$(STAGE)" != "prod" ] && [ "$(STAGE)" != "slim" ] && [ "$(STAGE)" != "work" ]; then \
-		echo "Error, Flavour can only be one of 'base', 'mods', 'prod', 'slim' or 'work'."; \
+	@if [ "$(TYPE)" != "php-cli" ] && [ "$(TYPE)" != "php-fpm" ] && [ "$(TYPE)" != "elasticsearch" ] && [ "$(TYPE)" != "opensearch" ] && [ "$(TYPE)" != "nginx" ] && [ "$(TYPE)" != "varnish" ] && [ "$(TYPE)" != "mailhog" ]; then \
+		echo "Error, Flavour can only be one of 'php-cli', 'php-fpm', 'elasticsearch', 'opensearch', 'nginx', 'varnish' or 'mailhog'."; \
 		echo "Exiting."; \
 		exit 1; \
 	fi
@@ -306,7 +296,7 @@ check-stage-is-set:
 ### Checks if current image exists and is of correct architecture
 ###
 .PHONY: check-current-image-exists
-check-current-image-exists: check-stage-is-set
+check-current-image-exists: check-type-is-set
 check-current-image-exists:
 	@if [ "$$( docker images -q $(IMAGE):$(DOCKER_TAG) )" = "" ]; then \
 		>&2 echo "Docker image '$(IMAGE):$(DOCKER_TAG)' was not found locally."; \
@@ -327,75 +317,3 @@ check-current-image-exists:
 	else \
 		echo "OK: Image $(IMAGE):$(DOCKER_TAG) is of arch $${OS}/$${ARCH}"; \
 	fi
-
-###
-### Checks if parent image exists and is of correct architecture
-###
-.PHONY: check-parent-image-exists
-check-parent-image-exists: check-stage-is-set
-check-parent-image-exists:
-	@if [ "$(STAGE)" = "work" ]; then \
-		if [ "$$( docker images -q $(IMAGE):$(SLIM_TAG) )" = "" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(SLIM_TAG)' was not found locally."; \
-			>&2 echo "Either build it first or explicitly pull it from Dockerhub."; \
-			>&2 echo "This is a safeguard to not automatically pull the Docker image."; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-		OS="$$( docker image inspect $(IMAGE):$(SLIM_TAG) --format '{{.Os}}' )"; \
-		ARCH="$$( docker image inspect $(IMAGE):$(SLIM_TAG) --format '{{.Architecture}}' )"; \
-		if [ "$${OS}/$${ARCH}" != "$(ARCH)" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(SLIM_TAG)' has invalid architecture: $${OS}/$${ARCH}"; \
-			>&2 echo "Expected: $(ARCH)"; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-	elif [ "$(STAGE)" = "slim" ]; then \
-		if [ "$$( docker images -q $(IMAGE):$(PROD_TAG) )" = "" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(PROD_TAG)' was not found locally."; \
-			>&2 echo "Either build it first or explicitly pull it from Dockerhub."; \
-			>&2 echo "This is a safeguard to not automatically pull the Docker image."; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-		OS="$$( docker image inspect $(IMAGE):$(PROD_TAG) --format '{{.Os}}' )"; \
-		ARCH="$$( docker image inspect $(IMAGE):$(PROD_TAG) --format '{{.Architecture}}' )"; \
-		if [ "$${OS}/$${ARCH}" != "$(ARCH)" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(PROD_TAG)' has invalid architecture: $${OS}/$${ARCH}"; \
-			>&2 echo "Expected: $(ARCH)"; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-	elif [ "$(STAGE)" = "prod" ]; then \
-		if [ "$$( docker images -q $(IMAGE):$(MODS_TAG) )" = "" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(MODS_TAG)' was not found locally."; \
-			>&2 echo "Either build it first or explicitly pull it from Dockerhub."; \
-			>&2 echo "This is a safeguard to not automatically pull the Docker image."; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-		OS="$$( docker image inspect $(IMAGE):$(MODS_TAG) --format '{{.Os}}' )"; \
-		ARCH="$$( docker image inspect $(IMAGE):$(MODS_TAG) --format '{{.Architecture}}' )"; \
-		if [ "$${OS}/$${ARCH}" != "$(ARCH)" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(MODS_TAG)' has invalid architecture: $${OS}/$${ARCH}"; \
-			>&2 echo "Expected: $(ARCH)"; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-	elif [ "$(STAGE)" = "mods" ]; then \
-		if [ "$$( docker images -q $(IMAGE):$(BASE_TAG) )" = "" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(BASE_TAG)' was not found locally."; \
-			>&2 echo "Either build it first or explicitly pull it from Dockerhub."; \
-			>&2 echo "This is a safeguard to not automatically pull the Docker image."; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-		OS="$$( docker image inspect $(IMAGE):$(BASE_TAG) --format '{{.Os}}' )"; \
-		ARCH="$$( docker image inspect $(IMAGE):$(BASE_TAG) --format '{{.Architecture}}' )"; \
-		if [ "$${OS}/$${ARCH}" != "$(ARCH)" ]; then \
-			>&2 echo "Docker image '$(IMAGE):$(BASE_TAG)' has invalid architecture: $${OS}/$${ARCH}"; \
-			>&2 echo "Expected: $(ARCH)"; \
-			>&2 echo; \
-			exit 1; \
-		fi; \
-	fi;

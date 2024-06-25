@@ -14,6 +14,25 @@ RUN if [ $(uname -m) = "x86_64" ]; then mailhog_arch="amd64"; else mailhog_arch=
     && GOOS=linux GOARCH=${mailhog_arch} go build -o mhsendmail .
 
 FROM php:{{ php_real_version }}-fpm
+MAINTAINER "Toan Nguyen" <hello@nntoan.com>
+
+###
+### Labels
+###
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+#LABEL "org.opencontainers.image.created"=""
+#LABEL "org.opencontainers.image.version"=""
+#LABEL "org.opencontainers.image.revision"=""
+LABEL "maintainer"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.authors"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.url"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.documentation"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.source"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.vendor"="Docker Workspace"
+LABEL "org.opencontainers.image.licenses"="MIT"
+LABEL "org.opencontainers.image.ref.name"="{{ php_version }}-fpm"
+LABEL "org.opencontainers.image.title"="PHP-FPM {{ php_version }}"
+LABEL "org.opencontainers.image.description"="PHP-FPM {{ php_real_version }}"
 
 ###
 ### Arguments

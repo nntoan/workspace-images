@@ -12,7 +12,26 @@ RUN if [ $(uname -m) = "x86_64" ]; then mailhog_arch="amd64"; else mailhog_arch=
     && go get . \
     && GOOS=linux GOARCH=${mailhog_arch} go build -o mhsendmail .
 
-FROM php:7.3-fpm
+FROM php:7.4-fpm
+MAINTAINER "Toan Nguyen" <hello@nntoan.com>
+
+###
+### Labels
+###
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+#LABEL "org.opencontainers.image.created"=""
+#LABEL "org.opencontainers.image.version"=""
+#LABEL "org.opencontainers.image.revision"=""
+LABEL "maintainer"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.authors"="Toan Nguyen <hello@nntoan.com>"
+LABEL "org.opencontainers.image.url"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.documentation"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.source"="https://github.com/nntoan/workspace-images"
+LABEL "org.opencontainers.image.vendor"="Docker Workspace"
+LABEL "org.opencontainers.image.licenses"="MIT"
+LABEL "org.opencontainers.image.ref.name"="7.4-fpm"
+LABEL "org.opencontainers.image.title"="PHP-FPM 7.4"
+LABEL "org.opencontainers.image.description"="PHP-FPM 7.4"
 
 ###
 ### Arguments
@@ -27,7 +46,7 @@ ENV MY_USER="www" \
     MY_GROUP="www" \
     MY_UID="1000" \
     MY_GID="1000" \
-    PHP_VERSION="7.3" \
+    PHP_VERSION="7.4" \
     PHP_MEMORY_LIMIT="2G" \
     PHP_VALIDATE_TIMESTAMPS=1 \
     DEBUG=false \
@@ -60,21 +79,17 @@ RUN set -eux \
     ca-certificates \
     gnupg2 \
     libbz2-dev \
-    libc-client-dev \
     libfreetype6-dev \
     libgeoip-dev \
     libgmp-dev \
     libgpgme11-dev \
     libicu-dev \
     libjpeg62-turbo-dev \
-    libkrb5-dev \
     libldap2-dev \
     libmagickcore-dev \
     libmagickwand-dev \
     libpng-dev \
     libpspell-dev \
-    librecode-dev \
-    librecode0 \
     libtidy-dev \
     libxslt1-dev \
     libyaml-dev \
@@ -145,7 +160,7 @@ RUN set -eux \
 	# Installation: Version specific
 	# Type:         Built-in extension
 	# Custom:       configure command
-	&& docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
+	&& docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
 	# Installation
 	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) gd \
 	&& true
@@ -200,16 +215,6 @@ RUN set -eux \
 	# Type:         PECL extension
 	# Default:      Pecl command
 	&& pecl install imagick \
-	&& true
-
-
-# -------------------- Installing PHP Extension: imap --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         Built-in extension
-	# Custom:       configure command
-	&& docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
-	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) imap \
 	&& true
 
 
@@ -324,14 +329,6 @@ RUN set -eux \
 	# Type:         PECL extension
 	# Default:      Pecl command
 	&& pecl install raphf \
-	&& true
-
-
-# -------------------- Installing PHP Extension: recode --------------------
-RUN set -eux \
-	# Installation: Generic
-	# Type:         Built-in extension
-	&& docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN) recode \
 	&& true
 
 
@@ -496,7 +493,7 @@ RUN set -eux \
 && curl -sS --fail -k https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_$(dpkg-architecture --query DEB_HOST_GNU_CPU | sed 's/_/-/g').tar.gz -L -o ioncube.tar.gz \
 && tar xvfz ioncube.tar.gz \
 && cd ioncube \
-&& cp "ioncube_loader_lin_7.3.so" "${EXTENSION_DIR}/ioncube.so" \
+&& cp "ioncube_loader_lin_7.4.so" "${EXTENSION_DIR}/ioncube.so" \
 && cd ../ \
 && rm -rf ioncube \
 && rm -rf ioncube.tar.gz \
@@ -515,8 +512,8 @@ RUN set -eux \
 ###
 ### Copy artifacts from builder
 ###
-COPY ./data/php-fpm.d/php-fpm-7.3.conf /usr/local/etc/php-fpm.conf
-COPY ./data/php-ini.d/php-fpm-7.3.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY ./data/php-fpm.d/php-fpm-7.4.conf /usr/local/etc/php-fpm.conf
+COPY ./data/php-ini.d/php-fpm-7.4.ini /usr/local/etc/php/conf.d/zz-magento.ini
 COPY ./data/php-ini.d/php-xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug-settings.ini
 COPY ./data/php-ini.d/php-pcov.ini /usr/local/etc/php/conf.d/zz-pcov-settings.ini
 COPY ./data/php-ini.d/mail.ini /usr/local/etc/php/conf.d/zz-mail.ini
