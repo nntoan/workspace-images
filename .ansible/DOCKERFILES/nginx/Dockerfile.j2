@@ -148,6 +148,7 @@ COPY ./data/etc/nginx.conf /etc/nginx/nginx.conf
 COPY ./data/etc/vhost.conf /etc/nginx/conf.d/default.conf
 COPY ./data/etc/xdebug-upstream.conf /etc/nginx/conf.d/xdebug/upstream.conf
 
+COPY ./data/templates /etc/vhost-templates
 COPY ./data/vhost-gen/templates-main /etc/vhost-gen/templates-main
 COPY ./data/create-vhost.sh /usr/local/bin/create-vhost.sh
 

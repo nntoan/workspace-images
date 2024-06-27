@@ -21,16 +21,23 @@
   tags:
     - opensearch
 
-#- hosts: nginx
-#  gather_facts: False
-#  roles:
-#    - nginx
-#  tags:
-#    - nginx
-#
+- hosts: nginx
+  gather_facts: False
+  roles:
+    - nginx
+  tags:
+    - nginx
+
 #- hosts: varnish
 #  gather_facts: False
 #  roles:
 #    - varnish
 #  tags:
 #    - varnish
+
+- hosts: mailhog
+  gather_facts: False
+  roles:
+    - mailhog
+  tags:
+    - mailhog

@@ -9,6 +9,7 @@ edit_comment_elasticsearch: "# Auto-generated via Ansible: edit ./ansible/DOCKER
 edit_comment_opensearch: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/opensearch/Dockerfile.j2 instead."
 edit_comment_varnish: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/nginx/Dockerfile.j2 instead."
 edit_comment_nginx: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/varnish/Dockerfile.j2 instead."
+edit_comment_mailhog: "# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/mailhog/Dockerfile.j2 instead."
 
 
 # ------------------------------------------------------------------------------------------------------
@@ -80,6 +81,14 @@ varnish_all_versions:
   - 7.1
   - 7.1.1
 
+
+# ------------------------------------------------------------------------------------------------------
+# Available Mailhog versions (see inventory)
+# ------------------------------------------------------------------------------------------------------
+mailhog_all_versions:
+  - 1.0
+
+
 # ------------------------------------------------------------------------------------------------------
 # Docker file paths for each version for php-cli, php-fpm, opensearch, elasticsearch, varnish and nginx
 # ------------------------------------------------------------------------------------------------------
@@ -105,17 +114,23 @@ template_dockerfiles_opensearch:
     key: opensearch
     alt: opensearch
 
-#template_dockerfiles_nginx:
-#  - src: DOCKERFILES/nginx/Dockerfile.j2
-#    dst: "../images/nginx/Dockerfile-{{ nginx_version }}"
-#    key: nginx
-#    alt: nginx
-#
+template_dockerfiles_nginx:
+  - src: DOCKERFILES/nginx/Dockerfile.j2
+    dst: "../images/nginx/Dockerfile-{{ nginx_version }}"
+    key: nginx
+    alt: nginx
+
 #template_dockerfiles_varnish:
 #  - src: DOCKERFILES/varnish/Dockerfile.j2
 #    dst: "../images/varnish/Dockerfile-{{ varnish_version }}"
 #    key: varnish
 #    alt: varnish
+
+template_dockerfiles_mailhog:
+  - src: DOCKERFILES/mailhog/Dockerfile.j2
+    dst: "../images/mailhog/Dockerfile-{{ mailhog_version }}"
+    key: mailhog
+    alt: mailhog
 
 
 # ------------------------------------------------------------------------------------------------------
