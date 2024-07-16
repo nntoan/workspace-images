@@ -1,7 +1,7 @@
 # vi: ft=dockerfile
-{{ edit_comment_nginx }}
+# Auto-generated via Ansible: edit ./ansible/DOCKERFILES/varnish/Dockerfile.j2 instead.
 
-FROM nginx:{{ nginx_version }}-alpine
+FROM nginx:1.24-alpine
 MAINTAINER "Toan Nguyen" <hello@nntoan.com>
 
 ###
@@ -18,9 +18,9 @@ LABEL "org.opencontainers.image.documentation"="https://github.com/nntoan/worksp
 LABEL "org.opencontainers.image.source"="https://github.com/nntoan/workspace-images"
 LABEL "org.opencontainers.image.vendor"="Docker Workspace"
 LABEL "org.opencontainers.image.licenses"="MIT"
-LABEL "org.opencontainers.image.ref.name"="{{ nginx_version }}-alpine"
-LABEL "org.opencontainers.image.title"="Nginx HTTPD {{ nginx_version }}"
-LABEL "org.opencontainers.image.description"="Nginx HTTPD {{ nginx_version }}"
+LABEL "org.opencontainers.image.ref.name"="1.24-alpine"
+LABEL "org.opencontainers.image.title"="Nginx HTTPD 1.24"
+LABEL "org.opencontainers.image.description"="Nginx HTTPD 1.24"
 
 
 ###
